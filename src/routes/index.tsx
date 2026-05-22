@@ -170,7 +170,6 @@ function ApplyPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Toaster />
       <Header />
       <div className="mx-auto max-w-2xl px-6 py-10 sm:py-16">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
