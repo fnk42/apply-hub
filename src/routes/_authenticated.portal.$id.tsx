@@ -16,7 +16,8 @@ import {
 import { screeningQuestions } from "@/config/screening";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const candidateQuery = (id: string) =>
   queryOptions({
