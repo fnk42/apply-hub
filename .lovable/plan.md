@@ -1,101 +1,96 @@
-# Prompt 2 — Recruiter Portal + LinkedIn fix
 
-## Scope
+## Goal
 
-Build the authenticated recruiter side of the app, plus a small fix to the public form. Public apply page (Prompt 1) is untouched except for the LinkedIn field.
+Restyle the recruiter portal to match Transformari's layout, add `years_of_experience` and `current_company` fields, surface resume + screening answers properly on the detail view, and switch pipeline status to one-click buttons (matching today's fit pattern).
 
-## Fix on the public form (`src/routes/index.tsx`)
+## 1. Schema changes (migration)
 
-- Change `linkedin_url` Zod rule from `.url()` + `linkedin.com` regex to a plain free-text string, required, max 255 chars.
-- Update input: drop `type="url"`, keep placeholder as a hint ("LinkedIn URL or handle").
-- Label stays "LinkedIn URL *".
+Add two columns to `applications`:
+- `years_of_experience` — integer, nullable (NULL = "Not applicable / Prefer not to say")
+- `current_company` — text, nullable, max 160 chars (NULL/empty rendered as "—"; a separate `current_company_na` boolean isn't needed — we treat empty as N/A)
 
-## Auth
+No RLS changes. No data backfill needed.
 
-- Enable email/password + Google sign-in (Google via Lovable broker + `configure_social_auth`).
-- Do NOT enable email auto-confirm.
-- No `profiles` table — recruiter identity lives in `auth.users` + `user_roles`.
-- First user to sign up gets seeded as `admin` via a one-shot SQL insert after they create their account (instructions surfaced on the login page until a recruiter exists). Future role grants happen by admin from `/portal/settings` (Prompt 3).
-- Root route wires `onAuthStateChange` once → `router.invalidate()` + `queryClient.invalidateQueries()`.
+## 2. Public apply form (`src/routes/index.tsx`)
 
-## Routes
+Add two new fields above the screening section:
+- **Current company** — text input, optional, with a "Not currently employed / N/A" checkbox that clears + disables the input.
+- **Years of professional experience** — number input (0–60), required.
 
+Keep LinkedIn as free-form text (already done).
+
+## 3. Recruiter portal — Transformari layout
+
+Replace the current top-only layout with a persistent left sidebar shell.
+
+### New layout route: `src/routes/_authenticated.portal.tsx`
+Wraps all `/portal/*` routes with:
+
+```text
+┌────────────┬──────────────────────────────────────────┐
+│ Pipit      │  Pipit Search Hub        [role] [avatar] │
+│ Search Hub │──────────────────────────────────────────│
+│            │                                          │
+│ ▸ Candidat │   <Outlet />                             │
+│   Add new  │                                          │
+│   Activity │                                          │
+│   Settings │                                          │
+│            │                                          │
+│ Felix N.   │                                          │
+│ Recruiter  │                                          │
+│ Sign out   │                                          │
+└────────────┴──────────────────────────────────────────┘
 ```
-/login                          → public, email+password + Google button
-/_authenticated/                → layout: beforeLoad checks session, redirects to /login
-  portal/                       → layout: beforeLoad asserts is_recruiter_or_admin, else /unauthorized
-    index.tsx                   → candidates table
-    new.tsx                     → manual add form
-    $id.tsx                     → candidate detail
-/unauthorized                   → public, "you're signed in but not a recruiter"
-```
 
-`/` (public apply) stays outside `_authenticated`.
+- Sidebar: 240px, black background (Pipit black), yellow accent on active item, serif wordmark at top, user block + sign-out at bottom.
+- Top header bar: thin, white, holds the "Pipit Search Hub · Recruiter" subtitle and right-side role badge + avatar + sign-out icon.
+- Use the shadcn `Sidebar` primitive with `collapsible="icon"` so it collapses to icons on narrow screens.
+- Nav items (initial set): Candidates, Add candidate, Activity log (read-only list of all `application_events`), Settings (placeholder).
 
-## Server functions (`src/lib/candidates.functions.ts`)
+### Candidates list (`_authenticated.portal.index.tsx`)
+- Large serif page title "Candidates" + count chip ("12 total").
+- Filters row: Stage (status), Fit, search.
+- **Remove the Source column.**
+- Name cell: candidate name as a **link to the LinkedIn URL** (opens in new tab, with external-link icon) when present, falling back to plain text. Below the name in smaller muted text: `{current_company}` (or `Independent` if N/A). Row click still navigates to detail.
+- New `YOE` column (numeric, right-aligned, "—" if null).
+- Stage cell: inline dropdown badge (click to change status without opening the row).
 
-All use `requireSupabaseAuth`. RLS already restricts to recruiters.
+### Candidate detail (`_authenticated.portal.$id.tsx`)
+- Header: name as LinkedIn hyperlink (external-link icon), company + YOE underneath in smaller text.
+- **Pipeline status → 4-button grid** matching the existing Fit grid (Sourced / Scheduled / Rejected / Declined). One click sets the value.
+- Ensure **resume download** + **screening answers** sections always render when data is present. Investigate current behavior — for a public-form submission they should appear; the manual-add path won't have them and should show a subtle "No resume uploaded" / "No screening answers" placeholder instead of hiding the section entirely (this is why the user "doesn't see" them when poking around with manually-added candidates).
 
-- `listCandidates({ search?, fit?, pipeline_status? })` — returns `applications` ordered by `created_at desc`.
-- `getCandidate({ id })` — returns application + `application_events` (timeline).
-- `createCandidate(payload)` — manual add, `source: 'manual'`.
-- `updateCandidate({ id, patch })` — patch `fit | pipeline_status | recruiter_notes`. Triggers already log events.
-- `getResumeSignedUrl({ path })` — 60s signed URL from `resumes` bucket via `supabaseAdmin`.
+### Add candidate (`_authenticated.portal.new.tsx`)
+- Add the same `current_company` (+ N/A checkbox) and `years_of_experience` fields, both optional here.
 
-`src/start.ts` already has `attachSupabaseAuth` — verify and keep.
+## 4. Server function updates (`src/lib/candidates.functions.ts`)
 
-## UI
+- `listCandidates` — select the two new columns.
+- `getCandidate` — same.
+- `createCandidate` (manual add) — accept and persist the two new fields.
+- `updateCandidate` — already allows arbitrary patch; add the two field names to the allowlist.
+- No change to `getResumeSignedUrl`.
 
-Brand stays current navy/gold (Pipit black/yellow swap is a separate follow-up).
+## 5. Theme (light touch only, not the full Pipit black/yellow pass)
 
-### `/login`
-- Centered card. Email + password fields. "Sign in with Google" button above.
-- Link to `/` ("Back to apply page").
+This plan keeps tokens as-is — full Pipit black/yellow theming is still parked for "Prompt 3". The sidebar uses black bg + yellow active state via direct utility classes inside the sidebar component only, so the rest of the portal continues to read clean while we validate the layout.
 
-### `/portal` (candidates list)
-- Sticky top bar: Pipit logo, user email, sign-out.
-- Left: search box (name/email), filter dropdowns for Fit + Pipeline Status. "+ Add candidate" button → `/portal/new`.
-- Table columns: Name · Email · Source · Fit (badge) · Pipeline Status (badge) · Created. Row click → `/portal/:id`.
-- Empty state with CTA to add a candidate.
-- Uses TanStack Query (`queryOptions` + `ensureQueryData` in loader, `useSuspenseQuery` in component).
+---
 
-### `/portal/new`
-- Same fields as public form but all optional except `full_name` + `email`. No screening questions, no resume required (optional upload).
-- Stores `source: 'manual'`, `screening_answers: {}`.
+## Files touched
 
-### `/portal/:id` (detail)
-Two-column layout on desktop, stacked on mobile:
+- `supabase/migrations/<new>.sql` — add 2 columns
+- `src/routes/index.tsx` — 2 new fields on apply form
+- `src/routes/_authenticated.portal.tsx` — replace with sidebar shell
+- `src/routes/_authenticated.portal.index.tsx` — drop source col, add YOE col, name→LinkedIn, company subline
+- `src/routes/_authenticated.portal.$id.tsx` — header restyle, status button grid, always-render screening/resume sections
+- `src/routes/_authenticated.portal.new.tsx` — 2 new fields
+- `src/lib/candidates.functions.ts` — pass-through new fields
+- `src/components/portal/AppSidebar.tsx` (new) — Transformari-style nav
 
-**Left:** candidate facts (name, email, phone, LinkedIn link, source, created). Resume download button (calls `getResumeSignedUrl`). Screening answers rendered read-only.
+## Not in scope (defer)
 
-**Right:**
-- Fit selector: 4 pill buttons (Unrated / Weak / Medium / Strong). Click writes immediately.
-- Pipeline Status: dropdown (Sourced / Scheduled for Interview / Rejected at Screening / Candidate Declined). Writes immediately.
-- Recruiter Notes: free-form textarea, "Save" button (debounced toast on success).
-- Activity Log: reverse-chronological list from `application_events`, showing `event_type`, `from_value → to_value`, `actor_email`, `created_at`.
-
-### Components
-- `src/components/portal/CandidateTable.tsx`
-- `src/components/portal/FitBadge.tsx` (color-coded)
-- `src/components/portal/StatusBadge.tsx`
-- `src/components/portal/ActivityTimeline.tsx`
-
-## Migration
-
-One small migration: trigger to auto-log `created` event on insert into `applications` (already exists per Prompt 1 — verify; if missing, add). No schema changes otherwise.
-
-## Out of scope (deferred to Prompt 3 / Claude)
-
-- Pipit black/yellow palette swap
-- Radio → segmented pill restyle
-- `/portal/settings` (invite recruiters, manage roles)
-- CSV export, bulk actions
-- Email notifications, server-side validation on `/api/public/applications`
-- `CLAUDE.md` + `docs/design-system.md` scaffolding
-
-## Tech notes
-
-- All portal data access goes through `createServerFn` + `requireSupabaseAuth` — no direct `supabase.from(...)` in components.
-- Resume signed URLs use `supabaseAdmin` server-side only.
-- `_authenticated` layout does sync auth check; portal child routes add `beforeLoad` that awaits `supabase.auth.getUser()` before loader runs.
-- After login, role check happens in `/portal` layout `beforeLoad` via a `getMyRoles` server fn; non-recruiters get redirected to `/unauthorized`.
+- Full Pipit black/yellow color token pass across the public site & forms
+- Dashboard overview page with stat cards / pipeline funnel (Transformari has it; we can add later)
+- Shortlist / Import / PE Firms / Weekly Report pages
+- `CLAUDE.md` + `docs/design-system.md` handoff docs

@@ -59,6 +59,7 @@ export type Database = {
         Row: {
           cover_note: string | null
           created_at: string
+          current_company: string | null
           email: string
           fit: string
           full_name: string
@@ -72,10 +73,12 @@ export type Database = {
           screening_answers: Json
           source: string
           updated_at: string
+          years_of_experience: number | null
         }
         Insert: {
           cover_note?: string | null
           created_at?: string
+          current_company?: string | null
           email: string
           fit?: string
           full_name: string
@@ -89,10 +92,12 @@ export type Database = {
           screening_answers?: Json
           source?: string
           updated_at?: string
+          years_of_experience?: number | null
         }
         Update: {
           cover_note?: string | null
           created_at?: string
+          current_company?: string | null
           email?: string
           fit?: string
           full_name?: string
@@ -106,6 +111,7 @@ export type Database = {
           screening_answers?: Json
           source?: string
           updated_at?: string
+          years_of_experience?: number | null
         }
         Relationships: []
       }
