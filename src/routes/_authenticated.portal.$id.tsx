@@ -89,7 +89,7 @@ function CandidateDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/portal" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/portal/candidates" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to candidates
       </Link>
 
