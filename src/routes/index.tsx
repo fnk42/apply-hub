@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Toaster } from "@/components/ui/sonner";
 import { CheckCircle2, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -38,12 +37,7 @@ const baseSchema = z.object({
   full_name: z.string().trim().min(1, "Required").max(120),
   email: z.string().trim().email("Invalid email").max(255),
   phone: z.string().trim().min(5, "Required").max(40),
-  linkedin_url: z
-    .string()
-    .trim()
-    .url("Must be a valid URL")
-    .max(255)
-    .refine((u) => /linkedin\.com/i.test(u), "Must be a LinkedIn URL"),
+  linkedin_url: z.string().trim().min(1, "Required").max(255),
   cover_note: z.string().trim().max(500).optional().or(z.literal("")),
   honeypot: z.string().max(0).optional().or(z.literal("")),
 });
@@ -176,7 +170,6 @@ function ApplyPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Toaster />
       <Header />
       <div className="mx-auto max-w-2xl px-6 py-10 sm:py-16">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
@@ -224,8 +217,7 @@ function ApplyPage() {
             <Input
               id="linkedin_url"
               name="linkedin_url"
-              type="url"
-              placeholder="https://www.linkedin.com/in/your-handle"
+              placeholder="LinkedIn URL or handle"
               required
               maxLength={255}
             />
