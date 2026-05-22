@@ -72,6 +72,9 @@ function ApplyPage() {
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [companyNA, setCompanyNA] = useState(false);
+  const [companyVal, setCompanyVal] = useState("");
+  const [yoeVal, setYoeVal] = useState<string>("");
   const [answers, setAnswers] = useState<Record<string, any>>(() => {
     const init: Record<string, any> = {};
     for (const q of screeningQuestions) {
@@ -84,11 +87,14 @@ function ApplyPage() {
     e.preventDefault();
     setErrors({});
     const form = new FormData(e.currentTarget);
+    const yoeNum = yoeVal.trim() === "" ? NaN : Number(yoeVal);
     const values = {
       full_name: String(form.get("full_name") || ""),
       email: String(form.get("email") || ""),
       phone: String(form.get("phone") || ""),
       linkedin_url: String(form.get("linkedin_url") || ""),
+      current_company: companyNA ? "" : companyVal.trim(),
+      years_of_experience: yoeNum,
       cover_note: String(form.get("cover_note") || ""),
       honeypot: String(form.get("website") || ""),
     };
@@ -140,6 +146,8 @@ function ApplyPage() {
         email: values.email,
         phone: values.phone,
         linkedin_url: values.linkedin_url,
+        current_company: values.current_company || null,
+        years_of_experience: values.years_of_experience,
         resume_url: up.data.path,
         cover_note: values.cover_note || null,
         screening_answers: answers,
