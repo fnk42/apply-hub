@@ -60,6 +60,7 @@ export type Database = {
           cover_note: string | null
           created_at: string
           current_company: string | null
+          current_title: string | null
           email: string
           fit: string
           full_name: string
@@ -71,6 +72,7 @@ export type Database = {
           recruiter_notes: string | null
           resume_url: string | null
           screening_answers: Json
+          shortlisted: boolean
           source: string
           updated_at: string
           years_of_experience: number | null
@@ -79,6 +81,7 @@ export type Database = {
           cover_note?: string | null
           created_at?: string
           current_company?: string | null
+          current_title?: string | null
           email: string
           fit?: string
           full_name: string
@@ -90,6 +93,7 @@ export type Database = {
           recruiter_notes?: string | null
           resume_url?: string | null
           screening_answers?: Json
+          shortlisted?: boolean
           source?: string
           updated_at?: string
           years_of_experience?: number | null
@@ -98,6 +102,7 @@ export type Database = {
           cover_note?: string | null
           created_at?: string
           current_company?: string | null
+          current_title?: string | null
           email?: string
           fit?: string
           full_name?: string
@@ -109,6 +114,7 @@ export type Database = {
           recruiter_notes?: string | null
           resume_url?: string | null
           screening_answers?: Json
+          shortlisted?: boolean
           source?: string
           updated_at?: string
           years_of_experience?: number | null
