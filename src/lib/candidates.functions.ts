@@ -39,7 +39,7 @@ export const listCandidates = createServerFn({ method: "POST" })
     let q = supabase
       .from("applications")
       .select(
-        "id, created_at, source, full_name, email, phone, fit, pipeline_status",
+        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, years_of_experience, fit, pipeline_status",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -82,6 +82,8 @@ const updateInput = z.object({
       fit: z.enum(FIT_VALUES).optional(),
       pipeline_status: z.enum(STATUS_VALUES).optional(),
       recruiter_notes: z.string().max(10000).nullable().optional(),
+      current_company: z.string().trim().max(160).nullable().optional(),
+      years_of_experience: z.number().int().min(0).max(60).nullable().optional(),
     })
     .refine((p) => Object.keys(p).length > 0, "Empty patch"),
 });
@@ -105,6 +107,8 @@ const createInput = z.object({
   email: z.string().trim().email().max(255),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   linkedin_url: z.string().trim().max(255).optional().or(z.literal("")),
+  current_company: z.string().trim().max(160).optional().or(z.literal("")),
+  years_of_experience: z.number().int().min(0).max(60).nullable().optional(),
   cover_note: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
@@ -121,6 +125,8 @@ export const createCandidate = createServerFn({ method: "POST" })
         email: data.email,
         phone: data.phone || null,
         linkedin_url: data.linkedin_url || null,
+        current_company: data.current_company || null,
+        years_of_experience: data.years_of_experience ?? null,
         cover_note: data.cover_note || null,
         screening_answers: {},
       })

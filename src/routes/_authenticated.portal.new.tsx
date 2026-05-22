@@ -5,6 +5,7 @@ import { createCandidate } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
@@ -16,10 +17,18 @@ function NewCandidatePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
+  const [companyNA, setCompanyNA] = useState(false);
+  const [companyVal, setCompanyVal] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    const yoeRaw = String(form.get("years_of_experience") || "").trim();
+    const yoe = yoeRaw === "" ? null : Number(yoeRaw);
+    if (yoe !== null && (!Number.isInteger(yoe) || yoe < 0 || yoe > 60)) {
+      toast.error("Years of experience must be 0–60");
+      return;
+    }
     setSubmitting(true);
     try {
       const { id } = await createCandidate({
@@ -28,6 +37,8 @@ function NewCandidatePage() {
           email: String(form.get("email") || "").trim(),
           phone: String(form.get("phone") || "").trim(),
           linkedin_url: String(form.get("linkedin_url") || "").trim(),
+          current_company: companyNA ? "" : companyVal.trim(),
+          years_of_experience: yoe,
           cover_note: String(form.get("cover_note") || "").trim(),
         },
       });
@@ -46,7 +57,7 @@ function NewCandidatePage() {
       <Link to="/portal" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to candidates
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Add candidate</h1>
+      <h1 className="mt-3 font-serif text-3xl tracking-tight">Add candidate</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Manually add someone you've sourced. Only name and email are required.
       </p>
@@ -66,6 +77,33 @@ function NewCandidatePage() {
             name="linkedin_url"
             maxLength={255}
             placeholder="LinkedIn URL or handle"
+          />
+        </Field>
+        <Field id="current_company" label="Current company">
+          <Input
+            id="current_company"
+            value={companyVal}
+            onChange={(e) => setCompanyVal(e.target.value)}
+            maxLength={160}
+            disabled={companyNA}
+            placeholder={companyNA ? "Not currently employed" : ""}
+          />
+          <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={companyNA}
+              onCheckedChange={(c) => setCompanyNA(c === true)}
+            />
+            Not currently employed / N/A
+          </label>
+        </Field>
+        <Field id="years_of_experience" label="Years of experience">
+          <Input
+            id="years_of_experience"
+            name="years_of_experience"
+            type="number"
+            min={0}
+            max={60}
+            inputMode="numeric"
           />
         </Field>
         <Field id="cover_note" label="Notes for the candidate record">

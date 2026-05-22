@@ -9,13 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   FitBadge,
   STATUS_LABELS,
   FIT_LABELS,
@@ -92,6 +85,7 @@ function CandidateDetailPage() {
   }
 
   const screening = (a.screening_answers as Record<string, any>) || {};
+  const hasLinkedIn = a.linkedin_url && /^https?:\/\//i.test(a.linkedin_url);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -101,9 +95,29 @@ function CandidateDetailPage() {
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{a.full_name}</h1>
+          <h1 className="font-serif text-3xl tracking-tight text-foreground">
+            {hasLinkedIn ? (
+              <a
+                href={a.linkedin_url!}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 hover:underline"
+              >
+                {a.full_name}
+                <ExternalLink className="h-5 w-5" />
+              </a>
+            ) : (
+              a.full_name
+            )}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Added {new Date(a.created_at).toLocaleString()} · source: {a.source}
+            {a.current_company || "Independent"}
+            {a.years_of_experience != null && (
+              <> · {a.years_of_experience} yrs experience</>
+            )}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Added {new Date(a.created_at).toLocaleString()}
           </p>
         </div>
         <FitBadge value={a.fit} />
@@ -119,17 +133,18 @@ function CandidateDetailPage() {
               </a>
             </Row>
             {a.phone && <Row label="Phone">{a.phone}</Row>}
-            {a.linkedin_url && (
-              <Row label="LinkedIn">
-                <LinkedInDisplay value={a.linkedin_url} />
-              </Row>
+            {a.linkedin_url && !hasLinkedIn && (
+              <Row label="LinkedIn">{a.linkedin_url}</Row>
             )}
-            {a.resume_url && (
-              <Row label="Resume">
-                <Button size="sm" variant="outline" onClick={openResume}>
-                  <Download className="mr-1 h-4 w-4" /> Open resume
-                </Button>
-              </Row>
+          </Card>
+
+          <Card title="Resume">
+            {a.resume_url ? (
+              <Button size="sm" variant="outline" onClick={openResume}>
+                <Download className="mr-1 h-4 w-4" /> Open resume
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">No resume uploaded.</p>
             )}
           </Card>
 
@@ -139,8 +154,12 @@ function CandidateDetailPage() {
             </Card>
           )}
 
-          {Object.keys(screening).length > 0 && (
-            <Card title="Screening answers">
+          <Card title="Screening answers">
+            {Object.keys(screening).length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No screening answers (this candidate was added manually).
+              </p>
+            ) : (
               <dl className="space-y-4">
                 {screeningQuestions.map((q) => {
                   const v = screening[q.id];
@@ -157,8 +176,8 @@ function CandidateDetailPage() {
                   );
                 })}
               </dl>
-            </Card>
-          )}
+            )}
+          </Card>
         </div>
 
         {/* RIGHT */}
@@ -184,14 +203,23 @@ function CandidateDetailPage() {
           </Card>
 
           <Card title="Pipeline status">
-            <Select value={a.pipeline_status} onValueChange={changeStatus}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => changeStatus(k)}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors",
+                    a.pipeline_status === k
+                      ? "border-accent bg-accent text-accent-foreground"
+                      : "border-input hover:border-accent",
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
           </Card>
 
           <Card title="Recruiter notes">
@@ -256,23 +284,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span className="text-sm">{children}</span>
     </div>
   );
-}
-
-function LinkedInDisplay({ value }: { value: string }) {
-  const isUrl = /^https?:\/\//i.test(value);
-  if (isUrl) {
-    return (
-      <a
-        href={value}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-1 text-primary hover:underline"
-      >
-        Profile <ExternalLink className="h-3 w-3" />
-      </a>
-    );
-  }
-  return <span>{value}</span>;
 }
 
 function formatEvent(type: string, from: string | null, to: string | null) {
