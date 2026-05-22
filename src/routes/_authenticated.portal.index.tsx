@@ -25,7 +25,7 @@ import {
   FIT_LABELS,
   STATUS_LABELS,
 } from "@/components/portal/Badges";
-import { Plus, Search } from "lucide-react";
+import { ExternalLink, Plus, Search } from "lucide-react";
 
 const candidatesQuery = queryOptions({
   queryKey: ["candidates"],
@@ -62,7 +62,7 @@ function CandidatesPage() {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="font-serif text-3xl tracking-tight text-foreground">
             Candidates
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -130,8 +130,7 @@ function CandidatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Source</TableHead>
+                <TableHead className="w-[80px] text-right">YOE</TableHead>
                 <TableHead>Fit</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Added</TableHead>
@@ -146,10 +145,19 @@ function CandidatesPage() {
                     navigate({ to: "/portal/$id", params: { id: c.id } })
                   }
                 >
-                  <TableCell className="font-medium">{c.full_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.email}</TableCell>
-                  <TableCell className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {c.source}
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <NameCell
+                        name={c.full_name}
+                        linkedinUrl={c.linkedin_url}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {c.current_company || "Independent"}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {c.years_of_experience ?? "—"}
                   </TableCell>
                   <TableCell><FitBadge value={c.fit} /></TableCell>
                   <TableCell><StatusBadge value={c.pipeline_status} /></TableCell>
@@ -164,4 +172,29 @@ function CandidatesPage() {
       </div>
     </div>
   );
+}
+
+function NameCell({
+  name,
+  linkedinUrl,
+}: {
+  name: string;
+  linkedinUrl: string | null;
+}) {
+  const isUrl = linkedinUrl && /^https?:\/\//i.test(linkedinUrl);
+  if (isUrl) {
+    return (
+      <a
+        href={linkedinUrl}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+      >
+        {name}
+        <ExternalLink className="h-3 w-3" />
+      </a>
+    );
+  }
+  return <span className="font-medium">{name}</span>;
 }

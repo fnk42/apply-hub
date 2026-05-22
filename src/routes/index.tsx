@@ -38,6 +38,12 @@ const baseSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
   phone: z.string().trim().min(5, "Required").max(40),
   linkedin_url: z.string().trim().min(1, "Required").max(255),
+  current_company: z.string().trim().max(160).optional().or(z.literal("")),
+  years_of_experience: z
+    .number()
+    .int()
+    .min(0, "Must be 0 or more")
+    .max(60, "Must be 60 or less"),
   cover_note: z.string().trim().max(500).optional().or(z.literal("")),
   honeypot: z.string().max(0).optional().or(z.literal("")),
 });
@@ -66,6 +72,9 @@ function ApplyPage() {
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [companyNA, setCompanyNA] = useState(false);
+  const [companyVal, setCompanyVal] = useState("");
+  const [yoeVal, setYoeVal] = useState<string>("");
   const [answers, setAnswers] = useState<Record<string, any>>(() => {
     const init: Record<string, any> = {};
     for (const q of screeningQuestions) {
@@ -78,11 +87,14 @@ function ApplyPage() {
     e.preventDefault();
     setErrors({});
     const form = new FormData(e.currentTarget);
+    const yoeNum = yoeVal.trim() === "" ? NaN : Number(yoeVal);
     const values = {
       full_name: String(form.get("full_name") || ""),
       email: String(form.get("email") || ""),
       phone: String(form.get("phone") || ""),
       linkedin_url: String(form.get("linkedin_url") || ""),
+      current_company: companyNA ? "" : companyVal.trim(),
+      years_of_experience: yoeNum,
       cover_note: String(form.get("cover_note") || ""),
       honeypot: String(form.get("website") || ""),
     };
@@ -134,6 +146,8 @@ function ApplyPage() {
         email: values.email,
         phone: values.phone,
         linkedin_url: values.linkedin_url,
+        current_company: values.current_company || null,
+        years_of_experience: values.years_of_experience,
         resume_url: up.data.path,
         cover_note: values.cover_note || null,
         screening_answers: answers,
@@ -222,6 +236,48 @@ function ApplyPage() {
               maxLength={255}
             />
           </Field>
+
+          <div className="grid gap-6 sm:grid-cols-[1fr_180px]">
+            <Field
+              label="Current company"
+              error={errors.current_company}
+              id="current_company"
+            >
+              <Input
+                id="current_company"
+                value={companyVal}
+                onChange={(e) => setCompanyVal(e.target.value)}
+                maxLength={160}
+                disabled={companyNA}
+                placeholder={companyNA ? "Not currently employed" : ""}
+              />
+              <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={companyNA}
+                  onCheckedChange={(c) => setCompanyNA(c === true)}
+                />
+                Not currently employed / N/A
+              </label>
+            </Field>
+            <Field
+              label="Years of experience *"
+              error={errors.years_of_experience}
+              id="years_of_experience"
+            >
+              <Input
+                id="years_of_experience"
+                name="years_of_experience"
+                type="number"
+                min={0}
+                max={60}
+                inputMode="numeric"
+                value={yoeVal}
+                onChange={(e) => setYoeVal(e.target.value)}
+                required
+              />
+            </Field>
+          </div>
+
 
           <Field label="Resume (PDF or DOCX, max 10MB) *" error={errors.resume} id="resume">
             <label

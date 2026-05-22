@@ -1,15 +1,8 @@
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  redirect,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { getMyRoles } from "@/lib/candidates.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/portal/AppSidebar";
 import { company } from "@/config/company";
-import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/portal")({
   beforeLoad: async () => {
@@ -26,46 +19,23 @@ export const Route = createFileRoute("/_authenticated/portal")({
 });
 
 function PortalLayout() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-  }, []);
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/login" });
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-primary text-primary-foreground">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <Link to="/portal" className="flex items-center gap-2 font-semibold">
-            <span className="grid h-7 w-7 place-items-center rounded bg-accent text-accent-foreground text-xs font-bold">
-              {company.name
-                .split(" ")
-                .map((w) => w[0])
-                .slice(0, 2)
-                .join("")}
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-card px-6">
+            <SidebarTrigger />
+            <div className="flex-1" />
+            <span className="text-sm text-muted-foreground">
+              {company.name} · Search Hub
             </span>
-            <span>{company.name} — Portal</span>
-          </Link>
-          <div className="flex items-center gap-3 text-sm">
-            {email && <span className="hidden sm:inline opacity-80">{email}</span>}
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={signOut}
-              className="bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
-            >
-              Sign out
-            </Button>
-          </div>
+          </header>
+          <main className="flex-1">
+            <Outlet />
+          </main>
         </div>
-      </header>
-      <Outlet />
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }
