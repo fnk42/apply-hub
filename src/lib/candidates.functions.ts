@@ -29,6 +29,8 @@ const listInput = z.object({
   search: z.string().trim().max(100).optional(),
   fit: z.enum(FIT_VALUES).optional(),
   pipeline_status: z.enum(STATUS_VALUES).optional(),
+  source: z.enum(["inbound", "sourced"]).optional(),
+  shortlisted: z.boolean().optional(),
 });
 
 export const listCandidates = createServerFn({ method: "POST" })
@@ -39,13 +41,16 @@ export const listCandidates = createServerFn({ method: "POST" })
     let q = supabase
       .from("applications")
       .select(
-        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, years_of_experience, fit, pipeline_status",
+        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, shortlisted",
       )
       .order("created_at", { ascending: false })
       .limit(500);
 
     if (data.fit) q = q.eq("fit", data.fit);
     if (data.pipeline_status) q = q.eq("pipeline_status", data.pipeline_status);
+    if (data.source === "inbound") q = q.eq("source", "public_form");
+    if (data.source === "sourced") q = q.eq("source", "manual");
+    if (data.shortlisted !== undefined) q = q.eq("shortlisted", data.shortlisted);
     if (data.search) {
       const s = `%${data.search}%`;
       q = q.or(`full_name.ilike.${s},email.ilike.${s}`);
@@ -83,7 +88,9 @@ const updateInput = z.object({
       pipeline_status: z.enum(STATUS_VALUES).optional(),
       recruiter_notes: z.string().max(10000).nullable().optional(),
       current_company: z.string().trim().max(160).nullable().optional(),
+      current_title: z.string().trim().max(160).nullable().optional(),
       years_of_experience: z.number().int().min(0).max(60).nullable().optional(),
+      shortlisted: z.boolean().optional(),
     })
     .refine((p) => Object.keys(p).length > 0, "Empty patch"),
 });
@@ -108,6 +115,7 @@ const createInput = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   linkedin_url: z.string().trim().max(255).optional().or(z.literal("")),
   current_company: z.string().trim().max(160).optional().or(z.literal("")),
+  current_title: z.string().trim().max(160).optional().or(z.literal("")),
   years_of_experience: z.number().int().min(0).max(60).nullable().optional(),
   cover_note: z.string().trim().max(2000).optional().or(z.literal("")),
 });
@@ -126,6 +134,7 @@ export const createCandidate = createServerFn({ method: "POST" })
         phone: data.phone || null,
         linkedin_url: data.linkedin_url || null,
         current_company: data.current_company || null,
+        current_title: data.current_title || null,
         years_of_experience: data.years_of_experience ?? null,
         cover_note: data.cover_note || null,
         screening_answers: {},
@@ -148,4 +157,121 @@ export const getResumeSignedUrl = createServerFn({ method: "POST" })
       .createSignedUrl(data.path, 60);
     if (error) throw new Error(error.message);
     return { url: signed.signedUrl };
+  });
+
+// ---- getDashboardStats ----
+export const getDashboardStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const { data: all, error } = await supabase
+      .from("applications")
+      .select("id, source, pipeline_status, fit, shortlisted, created_at, full_name")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const rows = all ?? [];
+    const inThisWeek = (d: string) => new Date(d) >= oneWeekAgo;
+    const inLastWeek = (d: string) => {
+      const t = new Date(d);
+      return t >= twoWeeksAgo && t < oneWeekAgo;
+    };
+
+    const count = (pred: (r: typeof rows[number]) => boolean) =>
+      rows.filter(pred).length;
+
+    const stats = {
+      inbound_this_week: count((r) => r.source === "public_form" && inThisWeek(r.created_at)),
+      inbound_last_week: count((r) => r.source === "public_form" && inLastWeek(r.created_at)),
+      sourced_this_week: count((r) => r.source === "manual" && inThisWeek(r.created_at)),
+      sourced_last_week: count((r) => r.source === "manual" && inLastWeek(r.created_at)),
+      scheduled_total: count((r) => r.pipeline_status === "scheduled_interview"),
+      rejected_total: count((r) => r.pipeline_status === "rejected_screening"),
+      declined_total: count((r) => r.pipeline_status === "candidate_declined"),
+      shortlisted_total: count((r) => r.shortlisted === true),
+      total: rows.length,
+    };
+
+    // Pipeline funnel: counts per status
+    const funnel = [
+      { key: "sourced", label: "Sourced", count: count((r) => r.pipeline_status === "sourced") },
+      { key: "scheduled_interview", label: "Scheduled for Interview", count: stats.scheduled_total },
+      { key: "rejected_screening", label: "Rejected at Screening", count: stats.rejected_total },
+      { key: "candidate_declined", label: "Candidate Declined", count: stats.declined_total },
+    ];
+
+    // Recent activity
+    const { data: events, error: evErr } = await supabase
+      .from("application_events")
+      .select("id, application_id, created_at, actor_email, event_type, from_value, to_value")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (evErr) throw new Error(evErr.message);
+
+    const nameById = new Map(rows.map((r) => [r.id, r.full_name]));
+    const recent = (events ?? []).map((ev) => ({
+      ...ev,
+      candidate_name: nameById.get(ev.application_id) ?? "Unknown",
+    }));
+
+    return { stats, funnel, recent };
+  });
+
+// ---- listActivity ----
+const activityInput = z.object({
+  event_type: z.string().max(40).optional(),
+  actor_email: z.string().max(255).optional(),
+  from_date: z.string().optional(),
+  to_date: z.string().optional(),
+});
+
+export const listActivity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => activityInput.parse(data ?? {}))
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    let q = supabase
+      .from("application_events")
+      .select("id, application_id, created_at, actor_email, event_type, from_value, to_value")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (data.event_type) q = q.eq("event_type", data.event_type);
+    if (data.actor_email) q = q.eq("actor_email", data.actor_email);
+    if (data.from_date) q = q.gte("created_at", data.from_date);
+    if (data.to_date) q = q.lte("created_at", data.to_date);
+    const { data: events, error } = await q;
+    if (error) throw new Error(error.message);
+
+    // get candidate names
+    const appIds = Array.from(new Set((events ?? []).map((e) => e.application_id)));
+    let names = new Map<string, string>();
+    if (appIds.length) {
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("id, full_name")
+        .in("id", appIds);
+      names = new Map((apps ?? []).map((a) => [a.id, a.full_name]));
+    }
+
+    // Distinct actors for filter dropdown
+    const { data: actorRows } = await supabase
+      .from("application_events")
+      .select("actor_email")
+      .not("actor_email", "is", null)
+      .limit(1000);
+    const actors = Array.from(
+      new Set((actorRows ?? []).map((r) => r.actor_email).filter(Boolean) as string[]),
+    ).sort();
+
+    return {
+      events: (events ?? []).map((e) => ({
+        ...e,
+        candidate_name: names.get(e.application_id) ?? "Unknown",
+      })),
+      actors,
+    };
   });

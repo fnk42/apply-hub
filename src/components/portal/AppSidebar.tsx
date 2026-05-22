@@ -1,6 +1,13 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, UserPlus, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Star,
+  Activity,
+  Settings as SettingsIcon,
+  LogOut,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,8 +23,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { company } from "@/config/company";
 
 const items = [
-  { title: "Candidates", url: "/portal" as const, icon: Users, exact: true },
-  { title: "Add candidate", url: "/portal/new" as const, icon: UserPlus },
+  { title: "Dashboard", url: "/portal" as const, icon: LayoutDashboard, exact: true },
+  { title: "Candidates", url: "/portal/candidates" as const, icon: Users },
+  { title: "Shortlist", url: "/portal/shortlist" as const, icon: Star },
+  { title: "Activity Log", url: "/portal/activity" as const, icon: Activity },
+  { title: "Settings", url: "/portal/settings" as const, icon: SettingsIcon },
 ];
 
 export function AppSidebar() {
@@ -43,12 +53,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <Link to="/portal" className="flex flex-col leading-tight">
-          <span className="font-serif text-lg tracking-tight">
+          <span className="font-serif text-lg tracking-tight text-sidebar-foreground">
             {company.name}
           </span>
-          <span className="text-xs text-sidebar-foreground/60">
-            Search Portal
-          </span>
+          <span className="text-xs text-sidebar-foreground/60">Search Portal</span>
         </Link>
       </SidebarHeader>
 
