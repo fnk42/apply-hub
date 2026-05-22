@@ -40,7 +40,7 @@ const baseSchema = z.object({
   linkedin_url: z.string().trim().min(1, "Required").max(255),
   current_company: z.string().trim().max(160).optional().or(z.literal("")),
   years_of_experience: z
-    .number({ invalid_type_error: "Required" })
+    .number()
     .int()
     .min(0, "Must be 0 or more")
     .max(60, "Must be 60 or less"),
