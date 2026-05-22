@@ -38,12 +38,7 @@ const baseSchema = z.object({
   full_name: z.string().trim().min(1, "Required").max(120),
   email: z.string().trim().email("Invalid email").max(255),
   phone: z.string().trim().min(5, "Required").max(40),
-  linkedin_url: z
-    .string()
-    .trim()
-    .url("Must be a valid URL")
-    .max(255)
-    .refine((u) => /linkedin\.com/i.test(u), "Must be a LinkedIn URL"),
+  linkedin_url: z.string().trim().min(1, "Required").max(255),
   cover_note: z.string().trim().max(500).optional().or(z.literal("")),
   honeypot: z.string().max(0).optional().or(z.literal("")),
 });
@@ -224,8 +219,7 @@ function ApplyPage() {
             <Input
               id="linkedin_url"
               name="linkedin_url"
-              type="url"
-              placeholder="https://www.linkedin.com/in/your-handle"
+              placeholder="LinkedIn URL or handle"
               required
               maxLength={255}
             />
