@@ -54,7 +54,7 @@ function NewCandidatePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <Link to="/portal" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/portal/candidates" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to candidates
       </Link>
       <h1 className="mt-3 font-serif text-3xl tracking-tight">Add candidate</h1>
@@ -118,7 +118,7 @@ function NewCandidatePage() {
             {submitting ? "Adding…" : "Add candidate"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link to="/portal">Cancel</Link>
+            <Link to="/portal/candidates">Cancel</Link>
           </Button>
         </div>
       </form>

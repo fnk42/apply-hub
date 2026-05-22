@@ -15,7 +15,11 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated.portal'
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
+import { Route as AuthenticatedPortalShortlistRouteImport } from './routes/_authenticated.portal.shortlist'
+import { Route as AuthenticatedPortalSettingsRouteImport } from './routes/_authenticated.portal.settings'
 import { Route as AuthenticatedPortalNewRouteImport } from './routes/_authenticated.portal.new'
+import { Route as AuthenticatedPortalCandidatesRouteImport } from './routes/_authenticated.portal.candidates'
+import { Route as AuthenticatedPortalActivityRouteImport } from './routes/_authenticated.portal.activity'
 import { Route as AuthenticatedPortalIdRouteImport } from './routes/_authenticated.portal.$id'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -48,11 +52,35 @@ const AuthenticatedPortalIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedPortalRoute,
   } as any)
+const AuthenticatedPortalShortlistRoute =
+  AuthenticatedPortalShortlistRouteImport.update({
+    id: '/shortlist',
+    path: '/shortlist',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
+const AuthenticatedPortalSettingsRoute =
+  AuthenticatedPortalSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
 const AuthenticatedPortalNewRoute = AuthenticatedPortalNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => AuthenticatedPortalRoute,
 } as any)
+const AuthenticatedPortalCandidatesRoute =
+  AuthenticatedPortalCandidatesRouteImport.update({
+    id: '/candidates',
+    path: '/candidates',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
+const AuthenticatedPortalActivityRoute =
+  AuthenticatedPortalActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
 const AuthenticatedPortalIdRoute = AuthenticatedPortalIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -65,7 +93,11 @@ export interface FileRoutesByFullPath {
   '/unauthorized': typeof UnauthorizedRoute
   '/portal': typeof AuthenticatedPortalRouteWithChildren
   '/portal/$id': typeof AuthenticatedPortalIdRoute
+  '/portal/activity': typeof AuthenticatedPortalActivityRoute
+  '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
   '/portal/new': typeof AuthenticatedPortalNewRoute
+  '/portal/settings': typeof AuthenticatedPortalSettingsRoute
+  '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal/': typeof AuthenticatedPortalIndexRoute
 }
 export interface FileRoutesByTo {
@@ -73,7 +105,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/portal/$id': typeof AuthenticatedPortalIdRoute
+  '/portal/activity': typeof AuthenticatedPortalActivityRoute
+  '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
   '/portal/new': typeof AuthenticatedPortalNewRoute
+  '/portal/settings': typeof AuthenticatedPortalSettingsRoute
+  '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal': typeof AuthenticatedPortalIndexRoute
 }
 export interface FileRoutesById {
@@ -84,7 +120,11 @@ export interface FileRoutesById {
   '/unauthorized': typeof UnauthorizedRoute
   '/_authenticated/portal': typeof AuthenticatedPortalRouteWithChildren
   '/_authenticated/portal/$id': typeof AuthenticatedPortalIdRoute
+  '/_authenticated/portal/activity': typeof AuthenticatedPortalActivityRoute
+  '/_authenticated/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
   '/_authenticated/portal/new': typeof AuthenticatedPortalNewRoute
+  '/_authenticated/portal/settings': typeof AuthenticatedPortalSettingsRoute
+  '/_authenticated/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
 }
 export interface FileRouteTypes {
@@ -95,7 +135,11 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/portal'
     | '/portal/$id'
+    | '/portal/activity'
+    | '/portal/candidates'
     | '/portal/new'
+    | '/portal/settings'
+    | '/portal/shortlist'
     | '/portal/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -103,7 +147,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/unauthorized'
     | '/portal/$id'
+    | '/portal/activity'
+    | '/portal/candidates'
     | '/portal/new'
+    | '/portal/settings'
+    | '/portal/shortlist'
     | '/portal'
   id:
     | '__root__'
@@ -113,7 +161,11 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/_authenticated/portal'
     | '/_authenticated/portal/$id'
+    | '/_authenticated/portal/activity'
+    | '/_authenticated/portal/candidates'
     | '/_authenticated/portal/new'
+    | '/_authenticated/portal/settings'
+    | '/_authenticated/portal/shortlist'
     | '/_authenticated/portal/'
   fileRoutesById: FileRoutesById
 }
@@ -168,11 +220,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortalIndexRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
+    '/_authenticated/portal/shortlist': {
+      id: '/_authenticated/portal/shortlist'
+      path: '/shortlist'
+      fullPath: '/portal/shortlist'
+      preLoaderRoute: typeof AuthenticatedPortalShortlistRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
+    '/_authenticated/portal/settings': {
+      id: '/_authenticated/portal/settings'
+      path: '/settings'
+      fullPath: '/portal/settings'
+      preLoaderRoute: typeof AuthenticatedPortalSettingsRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
     '/_authenticated/portal/new': {
       id: '/_authenticated/portal/new'
       path: '/new'
       fullPath: '/portal/new'
       preLoaderRoute: typeof AuthenticatedPortalNewRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
+    '/_authenticated/portal/candidates': {
+      id: '/_authenticated/portal/candidates'
+      path: '/candidates'
+      fullPath: '/portal/candidates'
+      preLoaderRoute: typeof AuthenticatedPortalCandidatesRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
+    '/_authenticated/portal/activity': {
+      id: '/_authenticated/portal/activity'
+      path: '/activity'
+      fullPath: '/portal/activity'
+      preLoaderRoute: typeof AuthenticatedPortalActivityRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
     '/_authenticated/portal/$id': {
@@ -187,13 +267,21 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedPortalRouteChildren {
   AuthenticatedPortalIdRoute: typeof AuthenticatedPortalIdRoute
+  AuthenticatedPortalActivityRoute: typeof AuthenticatedPortalActivityRoute
+  AuthenticatedPortalCandidatesRoute: typeof AuthenticatedPortalCandidatesRoute
   AuthenticatedPortalNewRoute: typeof AuthenticatedPortalNewRoute
+  AuthenticatedPortalSettingsRoute: typeof AuthenticatedPortalSettingsRoute
+  AuthenticatedPortalShortlistRoute: typeof AuthenticatedPortalShortlistRoute
   AuthenticatedPortalIndexRoute: typeof AuthenticatedPortalIndexRoute
 }
 
 const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
   AuthenticatedPortalIdRoute: AuthenticatedPortalIdRoute,
+  AuthenticatedPortalActivityRoute: AuthenticatedPortalActivityRoute,
+  AuthenticatedPortalCandidatesRoute: AuthenticatedPortalCandidatesRoute,
   AuthenticatedPortalNewRoute: AuthenticatedPortalNewRoute,
+  AuthenticatedPortalSettingsRoute: AuthenticatedPortalSettingsRoute,
+  AuthenticatedPortalShortlistRoute: AuthenticatedPortalShortlistRoute,
   AuthenticatedPortalIndexRoute: AuthenticatedPortalIndexRoute,
 }
 

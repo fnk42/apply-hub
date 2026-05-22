@@ -89,14 +89,15 @@
   --chart-3: oklch(0.6 0.05 250);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.22 0.05 255);
-  --sidebar-foreground: oklch(0.985 0.005 80);
-  --sidebar-primary: oklch(0.78 0.14 75);
-  --sidebar-primary-foreground: oklch(0.22 0.05 255);
-  --sidebar-accent: oklch(0.28 0.05 255);
-  --sidebar-accent-foreground: oklch(0.985 0.005 80);
-  --sidebar-border: oklch(0.3 0.04 255);
-  --sidebar-ring: oklch(0.78 0.14 75);
+  /* Sidebar: cream/off-white with sage-green active state (Transformari-style) */
+  --sidebar: oklch(0.97 0.012 85);
+  --sidebar-foreground: oklch(0.28 0.04 250);
+  --sidebar-primary: oklch(0.45 0.08 155);
+  --sidebar-primary-foreground: oklch(0.985 0.005 80);
+  --sidebar-accent: oklch(0.93 0.02 145);
+  --sidebar-accent-foreground: oklch(0.28 0.05 155);
+  --sidebar-border: oklch(0.9 0.012 85);
+  --sidebar-ring: oklch(0.45 0.08 155);
 }
 
 .dark {
