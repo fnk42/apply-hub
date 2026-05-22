@@ -17,7 +17,6 @@ import { screeningQuestions } from "@/config/screening";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Download, ExternalLink, Star } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const candidateQuery = (id: string) =>
   queryOptions({
@@ -121,7 +120,33 @@ function CandidateDetailPage() {
             Added {new Date(a.created_at).toLocaleString()}
           </p>
         </div>
-        <FitBadge value={a.fit} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              try {
+                await patch({ shortlisted: !a.shortlisted });
+                toast.success(a.shortlisted ? "Removed from shortlist" : "Added to shortlist");
+              } catch (e: any) {
+                toast.error(e?.message || "Failed");
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+              a.shortlisted
+                ? "border-accent bg-accent/20 text-accent-foreground"
+                : "border-input hover:border-accent",
+            )}
+          >
+            <Star
+              className={cn(
+                "h-4 w-4",
+                a.shortlisted ? "fill-accent stroke-accent" : "",
+              )}
+            />
+            {a.shortlisted ? "On shortlist" : "Add to shortlist"}
+          </button>
+          <FitBadge value={a.fit} />
+        </div>
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
