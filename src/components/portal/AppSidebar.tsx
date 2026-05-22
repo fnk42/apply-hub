@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, UserPlus, Activity, Settings, LogOut } from "lucide-react";
+import { Users, UserPlus, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,10 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { company } from "@/config/company";
 
 const items = [
-  { title: "Candidates", url: "/portal", icon: Users, exact: true },
-  { title: "Add candidate", url: "/portal/new", icon: UserPlus },
-  { title: "Activity log", url: "/portal/activity", icon: Activity },
-  { title: "Settings", url: "/portal/settings", icon: Settings },
+  { title: "Candidates", url: "/portal" as const, icon: Users, exact: true },
+  { title: "Add candidate", url: "/portal/new" as const, icon: UserPlus },
 ];
 
 export function AppSidebar() {

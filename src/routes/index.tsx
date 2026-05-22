@@ -38,6 +38,12 @@ const baseSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
   phone: z.string().trim().min(5, "Required").max(40),
   linkedin_url: z.string().trim().min(1, "Required").max(255),
+  current_company: z.string().trim().max(160).optional().or(z.literal("")),
+  years_of_experience: z
+    .number({ invalid_type_error: "Required" })
+    .int()
+    .min(0, "Must be 0 or more")
+    .max(60, "Must be 60 or less"),
   cover_note: z.string().trim().max(500).optional().or(z.literal("")),
   honeypot: z.string().max(0).optional().or(z.literal("")),
 });
