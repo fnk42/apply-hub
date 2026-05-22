@@ -237,6 +237,48 @@ function ApplyPage() {
             />
           </Field>
 
+          <div className="grid gap-6 sm:grid-cols-[1fr_180px]">
+            <Field
+              label="Current company"
+              error={errors.current_company}
+              id="current_company"
+            >
+              <Input
+                id="current_company"
+                value={companyVal}
+                onChange={(e) => setCompanyVal(e.target.value)}
+                maxLength={160}
+                disabled={companyNA}
+                placeholder={companyNA ? "Not currently employed" : ""}
+              />
+              <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={companyNA}
+                  onCheckedChange={(c) => setCompanyNA(c === true)}
+                />
+                Not currently employed / N/A
+              </label>
+            </Field>
+            <Field
+              label="Years of experience *"
+              error={errors.years_of_experience}
+              id="years_of_experience"
+            >
+              <Input
+                id="years_of_experience"
+                name="years_of_experience"
+                type="number"
+                min={0}
+                max={60}
+                inputMode="numeric"
+                value={yoeVal}
+                onChange={(e) => setYoeVal(e.target.value)}
+                required
+              />
+            </Field>
+          </div>
+
+
           <Field label="Resume (PDF or DOCX, max 10MB) *" error={errors.resume} id="resume">
             <label
               htmlFor="resume"
