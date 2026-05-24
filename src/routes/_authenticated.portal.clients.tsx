@@ -7,6 +7,8 @@ import {
   listClients,
   inviteClient,
   createClient,
+  deleteClient,
+
 } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
