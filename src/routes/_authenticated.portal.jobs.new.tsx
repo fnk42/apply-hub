@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, Navigate } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -29,16 +29,14 @@ const settingsQ = queryOptions({
   queryFn: () => getAppSettings(),
 });
 
+const rolesQ = queryOptions({
+  queryKey: ["my-roles"],
+  queryFn: () => getMyRoles(),
+});
+
 export const Route = createFileRoute("/_authenticated/portal/jobs/new")({
-  beforeLoad: async () => {
-    const { roles } = await getMyRoles();
-    if (!roles.includes("admin")) throw redirect({ to: "/portal/jobs" });
-  },
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(clientsQ),
-      context.queryClient.ensureQueryData(settingsQ),
-    ]);
+    await context.queryClient.ensureQueryData(rolesQ);
   },
   component: NewJobAdPage,
 });
@@ -53,6 +51,14 @@ function slugify(input: string): string {
 }
 
 function NewJobAdPage() {
+  const { data: rolesData } = useSuspenseQuery(rolesQ);
+  if (!rolesData.roles.includes("admin")) {
+    return <Navigate to="/portal/jobs" />;
+  }
+  return <NewJobAdForm />;
+}
+
+function NewJobAdForm() {
   const { data: clientsData } = useSuspenseQuery(clientsQ);
   const { data: settingsData } = useSuspenseQuery(settingsQ);
   const navigate = useNavigate();
