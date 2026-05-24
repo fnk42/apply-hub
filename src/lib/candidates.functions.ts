@@ -31,6 +31,7 @@ const listInput = z.object({
   pipeline_status: z.enum(STATUS_VALUES).optional(),
   source: z.enum(["inbound", "sourced"]).optional(),
   shortlisted: z.boolean().optional(),
+  job_ad_id: z.string().uuid().optional(),
 });
 
 export const listCandidates = createServerFn({ method: "POST" })
@@ -41,11 +42,12 @@ export const listCandidates = createServerFn({ method: "POST" })
     let q = supabase
       .from("applications")
       .select(
-        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, shortlisted",
+        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, shortlisted, job_ad_id",
       )
       .order("created_at", { ascending: false })
       .limit(500);
 
+    if (data.job_ad_id) q = q.eq("job_ad_id", data.job_ad_id);
     if (data.fit) q = q.eq("fit", data.fit);
     if (data.pipeline_status) q = q.eq("pipeline_status", data.pipeline_status);
     if (data.source === "inbound") q = q.eq("source", "public_form");
@@ -58,6 +60,72 @@ export const listCandidates = createServerFn({ method: "POST" })
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return { candidates: rows ?? [] };
+  });
+
+// ---- getPortalShell (sidebar data: app_name + job_ads grouped) ----
+export const getPortalShell = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const [adsRes, settingsRes, countsRes] = await Promise.all([
+      supabase
+        .from("job_ads")
+        .select("id, slug, title, status")
+        .order("created_at", { ascending: false }),
+      supabase.from("app_settings").select("key, value").eq("key", "app_name").maybeSingle(),
+      supabase.from("applications").select("job_ad_id"),
+    ]);
+    if (adsRes.error) throw new Error(adsRes.error.message);
+    const counts = new Map<string, number>();
+    for (const row of countsRes.data ?? []) {
+      counts.set(row.job_ad_id, (counts.get(row.job_ad_id) ?? 0) + 1);
+    }
+    const ads = (adsRes.data ?? []).map((a) => ({
+      id: a.id,
+      slug: a.slug,
+      title: a.title,
+      status: a.status,
+      count: counts.get(a.id) ?? 0,
+    }));
+    const appName =
+      (settingsRes.data?.value as any)?.name ??
+      (typeof settingsRes.data?.value === "string" ? settingsRes.data.value : null) ??
+      "Project Dashboard";
+    return { appName, ads };
+  });
+
+// ---- getJobAdBySlug ----
+export const getJobAdBySlug = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ slug: z.string().min(1).max(120) }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    const { data: ad, error } = await supabase
+      .from("job_ads")
+      .select(
+        "id, slug, title, status, roles_count, start_date, linkedin_job_url, jd_url, jd_text, client_id, authorized_at, closed_at, created_at",
+      )
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!ad) return { ad: null, client: null, stats: null };
+
+    const [clientRes, appsRes] = await Promise.all([
+      supabase.from("clients").select("id, name").eq("id", ad.client_id).maybeSingle(),
+      supabase
+        .from("applications")
+        .select("id, shortlisted")
+        .eq("job_ad_id", ad.id),
+    ]);
+
+    const apps = appsRes.data ?? [];
+    const stats = {
+      app_count: apps.length,
+      shortlist_count: apps.filter((a) => a.shortlisted).length,
+    };
+    return { ad, client: clientRes.data ?? null, stats };
   });
 
 // ---- getCandidate ----

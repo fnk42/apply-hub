@@ -1,9 +1,8 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard,
-  Users,
-  Star,
+  Briefcase,
   Activity,
   Settings as SettingsIcon,
   LogOut,
@@ -14,20 +13,19 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { company } from "@/config/company";
+import { getPortalShell } from "@/lib/candidates.functions";
 
-const items = [
-  { title: "Dashboard", url: "/portal" as const, icon: LayoutDashboard, exact: true },
-  { title: "Candidates", url: "/portal/candidates" as const, icon: Users },
-  { title: "Shortlist", url: "/portal/shortlist" as const, icon: Star },
-  { title: "Activity Log", url: "/portal/activity" as const, icon: Activity },
-  { title: "Settings", url: "/portal/settings" as const, icon: SettingsIcon },
+const GROUPS: { key: string; label: string; statuses: string[] }[] = [
+  { key: "live", label: "Live", statuses: ["live"] },
+  { key: "pending", label: "Pending", statuses: ["pending_authorization", "draft"] },
+  { key: "closed", label: "Closed", statuses: ["closed"] },
 ];
 
 export function AppSidebar() {
@@ -35,10 +33,13 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const [email, setEmail] = useState<string | null>(null);
 
+  const { data } = useQuery({
+    queryKey: ["portal-shell"],
+    queryFn: () => getPortalShell(),
+  });
+
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setEmail(data.user?.email ?? null));
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
   }, []);
 
   async function signOut() {
@@ -49,34 +50,76 @@ export function AppSidebar() {
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
 
+  const appName = data?.appName ?? "Project Dashboard";
+  const ads = data?.ads ?? [];
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <Link to="/portal" className="flex flex-col leading-tight">
           <span className="font-serif text-lg tracking-tight text-sidebar-foreground">
-            {company.name}
+            {appName}
           </span>
           <span className="text-xs text-sidebar-foreground/60">Search Portal</span>
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
+        {GROUPS.map((g) => {
+          const items = ads.filter((a) => g.statuses.includes(a.status));
+          if (items.length === 0) return null;
+          return (
+            <SidebarGroup key={g.key}>
+              <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((a) => (
+                    <SidebarMenuItem key={a.id}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === `/portal/jobs/${a.slug}`}
+                      >
+                        <Link
+                          to="/portal/jobs/$slug"
+                          params={{ slug: a.slug }}
+                          className="flex items-center gap-2"
+                        >
+                          <Briefcase className="h-4 w-4" />
+                          <span className="truncate">{a.title}</span>
+                          {a.count > 0 && (
+                            <span className="ml-auto rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[10px] tabular-nums text-sidebar-accent-foreground">
+                              {a.count}
+                            </span>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url, item.exact)}
-                  >
-                    <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/portal/activity")}>
+                  <Link to="/portal/activity" className="flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    <span>Activity Log</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/portal/settings")}>
+                  <Link to="/portal/settings" className="flex items-center gap-2">
+                    <SettingsIcon className="h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
