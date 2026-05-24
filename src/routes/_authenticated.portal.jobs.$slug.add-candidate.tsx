@@ -50,29 +50,51 @@ function AddCandidatePage() {
       toast.error("Years of experience must be 0–60");
       return;
     }
+    const orNull = (v: FormDataEntryValue | null) => {
+      const s = String(v ?? "").trim();
+      return s === "" ? "" : s;
+    };
+    const companyTrimmed = companyNA ? "" : companyVal.trim();
+
     setSubmitting(true);
+    let newId: string | null = null;
     try {
-      const { id } = await createCandidate({
+      const res = await createCandidate({
         data: {
           job_ad_id: ad.id,
           full_name: String(form.get("full_name") || "").trim(),
           email: String(form.get("email") || "").trim(),
-          phone: String(form.get("phone") || "").trim(),
-          linkedin_url: String(form.get("linkedin_url") || "").trim(),
-          current_company: companyNA ? "" : companyVal.trim(),
-          current_title: String(form.get("current_title") || "").trim(),
+          phone: orNull(form.get("phone")),
+          linkedin_url: orNull(form.get("linkedin_url")),
+          current_company: companyTrimmed,
+          current_title: orNull(form.get("current_title")),
           years_of_experience: yoe,
-          cover_note: String(form.get("cover_note") || "").trim(),
+          cover_note: orNull(form.get("cover_note")),
         },
       });
-      qc.invalidateQueries({ queryKey: ["candidates"] });
-      qc.invalidateQueries({ queryKey: ["job-ad", slug] });
-      toast.success("Candidate added");
-      navigate({ to: "/portal/$id", params: { id } });
+      newId = res.id;
     } catch (err: any) {
-      toast.error(err?.message || "Failed to add candidate");
-    } finally {
+      console.error("createCandidate failed", err);
+      const msg =
+        err?.message ||
+        err?.toString?.() ||
+        "Failed to add candidate";
+      toast.error(msg, { duration: 6000 });
       setSubmitting(false);
+      return;
+    }
+
+    // Success — unstick the button BEFORE navigating, in case the
+    // destination loader throws and we end up staying on this page.
+    setSubmitting(false);
+    qc.invalidateQueries({ queryKey: ["candidates"] });
+    qc.invalidateQueries({ queryKey: ["job-ad", slug] });
+    toast.success("Candidate added");
+    try {
+      await navigate({ to: "/portal/$id", params: { id: newId } });
+    } catch (err) {
+      console.error("navigate to candidate failed, falling back", err);
+      navigate({ to: "/portal/jobs/$slug", params: { slug } });
     }
   }
 
