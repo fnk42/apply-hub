@@ -11,7 +11,7 @@ export function waitForInitialSession(timeoutMs = 1500): Promise<Session | null>
       if (done) return;
       done = true;
       try {
-        sub?.subscription.unsubscribe();
+        sub.data.subscription.unsubscribe();
       } catch {}
       resolve(s);
     };
