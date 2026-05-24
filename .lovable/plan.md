@@ -1,117 +1,124 @@
-## Goal
+# Phased Rollout — Project Dashboard v2 (with UAT)
 
-Adopt Transformari layout: cream sidebar shell, new **Overview dashboard**, candidates table with company/title sub-line + **Inbound vs Sourced** tabs + shortlist toggle, and an **Activity log** page. Fix the current SSR error along the way.
+Ship in **vertical slices**. Each phase = one migration + one feature surface + **one UAT pass you sign off before we move on**.
 
-## 0. Fix the SSR error first
+UAT format per phase:
+- I post a numbered checklist in chat after deploy.
+- You run through it in the live preview (5–10 min).
+- Reply "pass" or list failing item numbers. I fix only those, then we proceed.
+- Anything not on the checklist is out of scope for that phase (logged for later).
 
-Portal currently throws `SSR rendering failed`. Likely culprits in the new sidebar layout: top-level `localStorage`/`window` access, or Tailwind 4 `w-[--sidebar-width]` not resolving. Diagnose and patch before adding more surface.
+---
 
-## 1. Sidebar restyle (cream, Transformari-style)
+## Phase 1 — Foundations: roles, clients, job_ads, seed (no UI change)
 
-Update `src/components/portal/AppSidebar.tsx` + sidebar tokens in `src/styles.css`:
-- Cream background, hairline right border
-- Serif `{company.name}` wordmark + muted "Search Portal" subtitle
-- Nav items with icons; subtle dark-green pill on active, sage tint on hover
-- Footer: user email + sign-out
+**Build**
+- Migration: create `clients`, `job_ads`, `app_settings`; extend `app_role` to add `member`.
+- Add `applications.job_ad_id` nullable; seed client "Golden Pipit Group" + ad "Business Manager" (live, slug = current); backfill, then `NOT NULL`.
+- Seed `app_settings.app_name = "Project Dashboard"`. Admin-only RLS on `clients`; read-only on `job_ads` for everyone else.
 
-Nav (final set, slimmed down):
-- Dashboard → `/portal`
-- Candidates → `/portal/candidates`
-- Shortlist → `/portal/shortlist`
-- Activity Log → `/portal/activity`
-- Settings → `/portal/settings` (stub for now)
+**UAT checklist**
+1. `/portal/candidates` still loads and shows existing candidates.
+2. `/portal/shortlist` still works.
+3. Apply form at `/` still submits successfully.
+4. Dashboard counters unchanged.
+5. No console errors on any of the above.
 
-## 2. Top header bar
+---
 
-`_authenticated.portal.tsx`: white, `SidebarTrigger` left, `{company.name} · {company.tagline}` center, role badge + avatar initial + sign-out icon right.
+## Phase 2 — Job-ad sidebar + ad detail page
 
-## 3. New Dashboard page (`/portal`)
+**Build**
+- Sidebar: LIVE / PENDING / CLOSED groups + Activity Log + Settings. Dashboard removed. Header shows `app_name`.
+- New `/portal/jobs` list and `/portal/jobs/$slug` detail (header + reused candidate table filtered by `job_ad_id`).
+- `/portal/candidates` and `/portal/shortlist` redirect to seed ad for now.
 
-Rename current candidates route → `_authenticated.portal.candidates.tsx`. New `_authenticated.portal.index.tsx` = Overview.
+**UAT checklist**
+1. Sidebar shows "Business Manager" under LIVE with live count.
+2. Clicking it opens detail with title, status, roles, start date, LinkedIn link, View JD.
+3. Candidate table inside ad matches the old `/portal/candidates` list.
+4. Inbound/Sourced tabs and shortlist star still work.
+5. Old `/portal/candidates` URL redirects to the new ad detail.
 
-Server fn `getDashboardStats` in `src/lib/candidates.functions.ts`:
-- Counts per pipeline_status this week vs last week
-- Split by source: inbound (`public_form`) vs sourced (`manual`)
-- Recent 10 `application_events` with candidate name
+---
 
-Components (new in `src/components/portal/`):
-- `StatCard` — left colored border, uppercase label, big serif number, WoW delta
-- `PipelineFunnel` — stage label + count + % + horizontal bar
-- `RecentActivity` — avatar + actor + verb + candidate link + timestamp
+## Phase 3 — Per-ad pipeline stages + Add candidate moves
 
-Layout: 4–6 stat cards in a 3-col grid (Inbound this week, Sourced this week, Scheduled, Rejected, Declined, Total Active), then funnel (2/3) + activity feed (1/3).
+**Build**
+- Migration: `job_ad_stages` + default-stage trigger; backfill stages for seed ad; add `applications.stage_id` nullable, backfill from `pipeline_status` (keep both this phase).
+- `/portal/jobs/$slug/stages` (admin): add/rename/reorder/delete (block delete if used).
+- Move add-candidate to `/portal/jobs/$slug/add-candidate`; delete `/portal/new`.
 
-Cards we can't populate from current schema (Reached Out / Screened separately) are omitted — not faked. Note in code that adding stages requires extending the status enum (deferred).
+**UAT checklist**
+1. As admin, reorder stages and confirm new order on the ad detail dropdowns.
+2. Rename a stage; existing candidates keep correct mapping.
+3. Try to delete a stage with candidates → blocked with clear message.
+4. Add a new candidate from the ad detail page; appears in first non-terminal stage.
+5. Change a candidate's stage via dropdown; persists after refresh.
 
-## 4. Candidates page (`/portal/candidates`) — Inbound vs Sourced
+---
 
-We already store `source` on `applications` (`public_form` for the apply form, `manual` for recruiter-added). Use it to split the list:
+## Phase 4 — Public apply form moves to `/apply/$slug`
 
-- **Tabs at the top: "Inbound applications" (default) | "Sourced"** — shadcn `Tabs`, count chip on each
-- The candidate model stays single; only the filter changes
-- `listCandidates` gains an optional `source` arg (`inbound` | `sourced` | undefined)
-- Manual-add page already sets `source: "manual"` ✓
+**Build**
+- `/apply/$slug` form; `submitApplication` validates slug + `status = 'live'`.
+- `/` becomes invitation-only landing (no public ad index).
 
-Table columns (final):
-- Checkbox
-- **Name** — name as LinkedIn link (external icon), company in muted text underneath, plus title line if/when we have it (omit if null)
-- **Date sourced** (= `created_at`)
-- **YOE**
-- **Stage** (inline dropdown badge to change status)
-- **Fit** (badge)
-- **Shortlist** — star icon toggle (filled gold = on shortlist, outline = off)
-- (no Location, no Source, no Screen-out reason, no Visibility)
+**UAT checklist**
+1. `/apply/business-manager` shows the form and submits successfully.
+2. Submitted candidate appears under Business Manager's candidate table.
+3. `/apply/does-not-exist` shows a not-found state.
+4. Set seed ad to `closed` temporarily → form refuses submission. Revert.
+5. `/` no longer shows the apply form.
 
-Filters row (pill style): Stage, Fit, Shortlist (All / On shortlist / Off), search by name/email.
+---
 
-## 5. Shortlist page (`/portal/shortlist`)
+## Phase 5 — Admin area (you only)
 
-Same table as Candidates but pre-filtered to `shortlisted = true`. Title "Your shortlist", subtitle "Candidates flagged for client review."
+**Build**
+- Migration: `payments`, `notifications`, billing trigger (10-candidate rule).
+- `/portal/admin/{index,authorizations,clients,clients/$id,jobs,payments}`.
+- Admin: create client, create ad (`/portal/jobs/new`), set posting fee, authorize, log payment.
+- Strip fee/billing fields from `job_ads` for non-admins.
 
-## 6. Activity log (`/portal/activity`)
+**UAT checklist**
+1. As admin, `/portal/admin` shows overview metrics + chart.
+2. Create a test client + draft ad → appears in Authorizations queue → Authorize moves it to LIVE.
+3. Submit 10 test applications → `ad_billing_ready` notification appears; ad shows in Payments "Ready to invoice".
+4. Log a payment; revenue MTD updates.
+5. Sign in as a non-admin test user → `/portal/admin/*` returns 403; fees not visible anywhere.
 
-New route. Filters: action type (All / fit_changed / status_changed / created / note_updated / manual_added), performer (distinct `actor_email`), date range. Server fn `listActivity` joins `application_events` with applicant name. Grouped by day with serif day heading; each row = avatar + "Felix Njenga updated fit on [Candidate]" + timestamp.
+---
 
-## 7. Settings stub
+## Phase 6 — Unified member role + Settings + client portal cleanup
 
-`_authenticated.portal.settings.tsx` — placeholder page so sidebar nav doesn't 404. Real settings later.
+**Build**
+- Migrate remaining `recruiter` → `member`; drop `recruiter` from enum.
+- `/portal/settings`: app name edit, user invites (magic link), role assignment, deactivate. Members see profile only.
+- `/portal/jobs/$slug/client-access` (admin): magic-link invite binds `clients.auth_user_id`. Client members' RLS scopes `job_ads` and `applications` to their `client_id`.
+- Delete legacy `/portal/candidates` + `/portal/shortlist` routes; drop `applications.pipeline_status`.
 
-## Schema additions (one migration)
+**UAT checklist**
+1. Admin renames app in Settings → sidebar header updates after refresh.
+2. Invite a test client contact via magic link; on first login they land in `/portal`.
+3. That client user sees only Business Manager and only Golden Pipit candidates — no other clients, no fees, no admin link.
+4. They can drag candidates between stages but cannot edit stage definitions.
+5. Recruiter test user sees all ads/candidates but no admin area, no fees, no payments.
+6. No dead links anywhere (old `/portal/candidates` etc.).
 
-- `applications.shortlisted` boolean default false
-- `applications.current_title` text nullable (optional sub-line under name when present; not added to public form yet to keep that form short)
+---
 
-That's it. No location, no screen-out-reason, no visibility column.
+## Cross-phase QA (run at end of every phase)
 
-## Public form (`/`)
+- Console clean on every visited route.
+- `supabase--linter` shows no new errors.
+- Auth still works for admin + member test users.
+- Mobile width (375px) doesn't blow up the sidebar or ad detail.
 
-No new fields this round. Company + YOE already added in the previous build.
+## Credit-saving rules
 
-## Server function updates (`src/lib/candidates.functions.ts`)
-
-- `listCandidates`: add `source?: 'inbound' | 'sourced'` and `shortlisted?: boolean` to input; map `inbound → source='public_form'`, `sourced → source='manual'`; select `shortlisted` and `current_title`
-- `updateCandidate`: allow `shortlisted` boolean in patch allowlist
-- `getDashboardStats`: NEW
-- `listActivity`: NEW
-
-## Files touched
-
-- `src/styles.css` — sidebar tokens to cream
-- `src/components/portal/AppSidebar.tsx` — restyle + trimmed nav
-- `src/routes/_authenticated.portal.tsx` — header polish, SSR fix
-- `src/routes/_authenticated.portal.index.tsx` — REPLACED with dashboard
-- `src/routes/_authenticated.portal.candidates.tsx` — NEW (moved list + Inbound/Sourced tabs + shortlist toggle)
-- `src/routes/_authenticated.portal.shortlist.tsx` — NEW
-- `src/routes/_authenticated.portal.activity.tsx` — NEW
-- `src/routes/_authenticated.portal.settings.tsx` — NEW (stub)
-- `src/routes/_authenticated.portal.$id.tsx` — add shortlist toggle button
-- `src/lib/candidates.functions.ts` — `getDashboardStats`, `listActivity`, source/shortlist passthroughs
-- `src/components/portal/{StatCard,PipelineFunnel,RecentActivity}.tsx` — NEW
-- Migration: `shortlisted` + `current_title` columns
-
-## Not in scope (deferred)
-
-- New pipeline stages (Reached Out, Screened) — needs status enum extension
-- Editable inline screen-out reason
-- Full Pipit black/yellow rebrand
-- Real Settings page (authorized users, search start date)
+- Reuse existing `StatCard`, `PipelineFunnel`, `RecentActivity`, candidate table, badges — no restyling until Phase 6.
+- One migration per phase, batched.
+- No speculative components; build only what each UAT checklist needs.
+- If a UAT item fails, fix only that item — no scope creep mid-phase.
+- Defer (logged, not built): email delivery, Stripe, member-initiated extra-ad requests, post-auth editing of `linkedin_job_url`.
