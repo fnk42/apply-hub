@@ -1,13 +1,26 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   getCandidate,
   updateCandidate,
+  deleteCandidate,
+  getPortalShell,
 } from "@/lib/candidates.functions";
 import { openResumeInNewTab } from "@/lib/open-resume";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   FitBadge,
   STATUS_LABELS,
@@ -16,7 +29,7 @@ import {
 import { screeningQuestions } from "@/config/screening";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Download, ExternalLink, Star } from "lucide-react";
+import { Download, ExternalLink, Star, Trash2 } from "lucide-react";
 
 const candidateQuery = (id: string) =>
   queryOptions({
@@ -30,13 +43,36 @@ export const Route = createFileRoute("/_authenticated/portal/$id")({
   component: CandidateDetailPage,
 });
 
+
 function CandidateDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQuery(candidateQuery(id));
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const a = data.application;
   const [notes, setNotes] = useState<string>(a.recruiter_notes ?? "");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const { data: shell } = useQuery({
+    queryKey: ["portal-shell"],
+    queryFn: () => getPortalShell(),
+  });
+  const isAdmin = (shell?.roles ?? []).includes("admin");
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteCandidate({ data: { id } });
+      toast.success("Candidate deleted");
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+      qc.invalidateQueries({ queryKey: ["portal-shell"] });
+      navigate({ to: "/portal/jobs" });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete");
+      setDeleting(false);
+    }
+  }
 
   async function patch(p: Record<string, any>) {
     await updateCandidate({ data: { id, patch: p } });
@@ -145,6 +181,37 @@ function CandidateDetailPage() {
             {a.shortlisted ? "On shortlist" : "Add to shortlist"}
           </button>
           <FitBadge value={a.fit} />
+          {isAdmin && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="mr-1 h-4 w-4" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this candidate?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently removes {a.full_name}'s application, activity log, and uploaded resume. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={deleting}
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting ? "Deleting…" : "Delete permanently"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 

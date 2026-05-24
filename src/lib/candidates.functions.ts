@@ -545,6 +545,52 @@ export const updateCandidate = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---- deleteCandidate (admin only) ----
+export const deleteCandidate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Only admins can delete candidates.");
+
+    const { data: app } = await supabaseAdmin
+      .from("applications")
+      .select("id, job_ad_id, resume_url")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!app) throw new Error("Candidate not found.");
+
+    await supabaseAdmin
+      .from("application_events")
+      .delete()
+      .eq("application_id", data.id);
+
+    const { error: delErr } = await supabaseAdmin
+      .from("applications")
+      .delete()
+      .eq("id", data.id);
+    if (delErr) throw new Error(delErr.message);
+
+    if (app.resume_url) {
+      const { error: storageErr } = await supabaseAdmin.storage
+        .from("resumes")
+        .remove([app.resume_url]);
+      if (storageErr) {
+        console.error("[deleteCandidate] resume removal failed:", storageErr.message);
+      }
+    }
+
+    return { ok: true, job_ad_id: app.job_ad_id };
+  });
+
 
 // ---- createCandidate (manual add, scoped to a job ad) ----
 const createInput = z.object({

@@ -1,61 +1,42 @@
-# Fix "Open resume" being blocked by Chrome (ERR_BLOCKED_BY_CLIENT)
+## Add "Delete candidate" capability
 
-## What's actually happening
+### What
 
-The server proxy (`getResumeBlob`) is working — bytes are reaching the
-browser fine. The failure is the **next step**: we create a `blob:` URL
-and call `window.open(blobUrl, "_blank")`. A Chrome extension on your
-"Work" profile (or an enterprise policy) blocks navigation to `blob:`
-URLs in a new tab → `ERR_BLOCKED_BY_CLIENT`. Same family of blocker
-that broke the original `supabase.co` link, just one layer deeper.
+Let an admin permanently delete a candidate (application + their activity events + their uploaded resume file) from the candidate detail page.
 
-## Fix — stop opening blob: URLs in a new tab
+### Why
 
-Two changes, both in `src/lib/open-resume.ts` (no server changes).
+Currently there's no way to remove test submissions, spam, duplicates, or candidates added by mistake. RLS already permits admins to delete applications — we just have no UI or server function for it.
 
-### 1. Default action: trigger a download instead of a tab open
+### Scope
 
-Instead of `window.open(blobUrl)`, create a hidden
-`<a href={blobUrl} download={filename}>` element, click it, then revoke.
-Downloads via blob URLs are not blocked by the extensions / policies
-that block blob-tab navigations. The recruiter gets the resume as a
-normal file in their Downloads folder and opens it locally.
+- Admins only (matches existing `admins delete applications` RLS policy).
+- Hard delete: removes the `applications` row, its `application_events`, and the resume file in the `resumes` storage bucket if present.
+- Trigger from the candidate detail page (`/portal/<job>/<id>`) with a confirmation dialog — no accidental deletes.
 
-### 2. Same-tab fallback if the click is suppressed
+### Changes
 
-If anything goes wrong with the synthetic click (very rare), fall back
-to `location.href = blobUrl` in the current tab — that path is also not
-flagged by the blocker.
+1. **`src/lib/candidates.functions.ts`** — add `deleteCandidate` server function:
+   - `requireSupabaseAuth` + admin role check (same pattern as `deleteClient`).
+   - Look up the application to grab `resume_url` and `job_ad_id` (for cache invalidation hint on client).
+   - Delete `application_events` for that application, delete the `applications` row, and best-effort delete the resume from the `resumes` bucket.
+   - Return `{ ok: true, job_ad_id }`.
 
-The function signature stays the same so every caller (candidate detail
-page, candidates list, shortlist page) keeps working with no edits.
+2. **`src/routes/_authenticated.portal.$id.tsx`** — add a "Delete candidate" button:
+   - Place it in the header area next to the shortlist/fit controls, styled as `destructive` and visually de-emphasized (small, outline-destructive).
+   - Wrap in `AlertDialog` (already in the design system) with title "Delete this candidate?", body explaining it's permanent and removes the resume + activity log, and a red "Delete permanently" confirm.
+   - On confirm: call `deleteCandidate`, show toast, invalidate `["candidates"]`, and navigate back to the job ad page (using the candidate's `job_ad_id`) — or to `/portal/jobs` as a fallback.
+   - Only render the button when the current user has the `admin` role. Source the role from the existing `getPortalShell` query that's already in cache (sidebar uses it), so no extra round-trip.
 
-### 3. UI copy tweak
+### Out of scope
 
-Change the button label from "Open resume" to "Download resume" on
-`src/routes/_authenticated.portal.$id.tsx` to match the new behavior.
-The `Download` icon is already in use.
+- No "soft delete / archive" flow — user asked for delete, not archive. Can add later if needed.
+- No bulk delete from the candidates list. Single-record delete from detail page only.
+- No changes to RLS (already correct).
+- No changes to the public apply form or resume download flow.
 
-## Bonus: Staff sign-in link on the public landing page
+### Technical notes
 
-Right now `gptalentportal.com/` is the public "Open roles" page and
-there's no visible way to reach the admin portal — you have to know
-the `/login` URL. Add a small, low-contrast **"Staff sign in"** link in
-the footer area of `src/routes/index.tsx` linking to `/login`. The
-public applicant flow is unchanged; staff get one click to the portal
-from the root domain.
-
-## What this does NOT touch
-
-- No DB / RLS / storage changes.
-- No changes to the public apply form or the upload path we shipped earlier.
-- No changes to auth.
-- The server proxy `getResumeBlob` stays as-is — it's working correctly.
-
-## How we'll verify
-
-1. Click "Download resume" on a candidate detail page on Chrome with
-   the same extensions enabled — file downloads, no `ERR_BLOCKED_BY_CLIENT`.
-2. Visit `https://gptalentportal.com/` — see "Staff sign in" link,
-   click it → land on `/login`, sign in → land in the portal.
-3. Public apply flow at `/apply/<slug>` is unchanged.
+- The `application_events` table has no FK cascade, so we delete events explicitly before the application row (same pattern `deleteClient` uses).
+- Resume deletion is best-effort: if the storage call fails (file already gone, etc.) we still proceed with the DB delete and log the storage error server-side.
+- Admin check uses `supabase` (user-scoped client from middleware) querying `user_roles`, matching the existing pattern in `deleteClient` / `createClient`.
