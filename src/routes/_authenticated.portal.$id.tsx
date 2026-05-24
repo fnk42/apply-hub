@@ -4,8 +4,8 @@ import { useState } from "react";
 import {
   getCandidate,
   updateCandidate,
-  getResumeSignedUrl,
 } from "@/lib/candidates.functions";
+import { openResumeInNewTab } from "@/lib/open-resume";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -77,8 +77,7 @@ function CandidateDetailPage() {
   async function openResume() {
     if (!a.resume_url) return;
     try {
-      const { url } = await getResumeSignedUrl({ data: { path: a.resume_url } });
-      window.open(url, "_blank");
+      await openResumeInNewTab(a.resume_url);
     } catch (e: any) {
       toast.error(e?.message || "Could not open resume");
     }
