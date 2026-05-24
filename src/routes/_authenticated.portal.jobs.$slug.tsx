@@ -85,6 +85,7 @@ const stagesQuery = (jobAdId: string) =>
 const rolesQuery = queryOptions({
   queryKey: ["my-roles"],
   queryFn: () => getMyRoles(),
+  staleTime: 60_000,
 });
 
 
