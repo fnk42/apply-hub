@@ -279,7 +279,7 @@ export const upsertJobAdStage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase } = context;
     if (data.id) {
-      const patch: Record<string, unknown> = { label: data.label };
+      const patch: { label: string; position?: number } = { label: data.label };
       if (data.position !== undefined) patch.position = data.position;
       const { error } = await supabase
         .from("job_ad_stages")
