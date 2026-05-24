@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { createCandidate, getJobAdBySlug } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ function AddCandidatePage() {
   const ad = adData.ad!;
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const createCandidateFn = useServerFn(createCandidate);
   const [submitting, setSubmitting] = useState(false);
   const [companyNA, setCompanyNA] = useState(false);
   const [companyVal, setCompanyVal] = useState("");
@@ -50,48 +52,47 @@ function AddCandidatePage() {
       toast.error("Years of experience must be 0–60");
       return;
     }
-    const orNull = (v: FormDataEntryValue | null) => {
-      const s = String(v ?? "").trim();
-      return s === "" ? "" : s;
-    };
+    const orEmpty = (v: FormDataEntryValue | null) => String(v ?? "").trim();
     const companyTrimmed = companyNA ? "" : companyVal.trim();
 
     setSubmitting(true);
     let newId: string | null = null;
     try {
-      const res = await createCandidate({
-        data: {
-          job_ad_id: ad.id,
-          full_name: String(form.get("full_name") || "").trim(),
-          email: String(form.get("email") || "").trim(),
-          phone: orNull(form.get("phone")),
-          linkedin_url: orNull(form.get("linkedin_url")),
-          current_company: companyTrimmed,
-          current_title: orNull(form.get("current_title")),
-          years_of_experience: yoe,
-          cover_note: orNull(form.get("cover_note")),
-        },
-      });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out after 15s")), 15000),
+      );
+      const res = await Promise.race([
+        createCandidateFn({
+          data: {
+            job_ad_id: ad.id,
+            full_name: String(form.get("full_name") || "").trim(),
+            email: String(form.get("email") || "").trim(),
+            phone: orEmpty(form.get("phone")),
+            linkedin_url: orEmpty(form.get("linkedin_url")),
+            current_company: companyTrimmed,
+            current_title: orEmpty(form.get("current_title")),
+            years_of_experience: yoe,
+            cover_note: orEmpty(form.get("cover_note")),
+          },
+        }),
+        timeout,
+      ]);
       newId = res.id;
     } catch (err: any) {
       console.error("createCandidate failed", err);
       const msg =
-        err?.message ||
-        err?.toString?.() ||
-        "Failed to add candidate";
+        err?.message || err?.toString?.() || "Failed to add candidate";
       toast.error(msg, { duration: 6000 });
-      setSubmitting(false);
       return;
+    } finally {
+      setSubmitting(false);
     }
 
-    // Success — unstick the button BEFORE navigating, in case the
-    // destination loader throws and we end up staying on this page.
-    setSubmitting(false);
     qc.invalidateQueries({ queryKey: ["candidates"] });
     qc.invalidateQueries({ queryKey: ["job-ad", slug] });
     toast.success("Candidate added");
     try {
-      await navigate({ to: "/portal/$id", params: { id: newId } });
+      await navigate({ to: "/portal/$id", params: { id: newId! } });
     } catch (err) {
       console.error("navigate to candidate failed, falling back", err);
       navigate({ to: "/portal/jobs/$slug", params: { slug } });
