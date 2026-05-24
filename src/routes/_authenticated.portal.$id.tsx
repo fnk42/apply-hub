@@ -166,7 +166,7 @@ function CandidateDetailPage() {
           <Card title="Resume">
             {a.resume_url ? (
               <Button size="sm" variant="outline" onClick={openResume}>
-                <Download className="mr-1 h-4 w-4" /> Open resume
+                <Download className="mr-1 h-4 w-4" /> Download resume
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground">No resume uploaded.</p>
