@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { company } from "@/config/company";
@@ -10,8 +10,29 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: `Sign in — ${company.name}` }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+  }),
   component: LoginPage,
 });
+
+function LoginPage() {
+  const navigate = useNavigate();
+  const { redirect: redirectTo } = Route.useSearch();
+  const destination = redirectTo || "/portal";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        window.location.href = destination;
+      }
+    });
+  }, [destination]);
+
 
 function LoginPage() {
   const navigate = useNavigate();
