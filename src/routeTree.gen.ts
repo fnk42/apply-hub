@@ -13,6 +13,7 @@ import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApplySlugRouteImport } from './routes/apply.$slug'
 import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated.portal'
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
 import { Route as AuthenticatedPortalShortlistRouteImport } from './routes/_authenticated.portal.shortlist'
@@ -42,6 +43,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApplySlugRoute = ApplySlugRouteImport.update({
+  id: '/apply/$slug',
+  path: '/apply/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPortalRoute = AuthenticatedPortalRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/portal': typeof AuthenticatedPortalRouteWithChildren
+  '/apply/$slug': typeof ApplySlugRoute
   '/portal/$id': typeof AuthenticatedPortalIdRoute
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/apply/$slug': typeof ApplySlugRoute
   '/portal/$id': typeof AuthenticatedPortalIdRoute
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_authenticated/portal': typeof AuthenticatedPortalRouteWithChildren
+  '/apply/$slug': typeof ApplySlugRoute
   '/_authenticated/portal/$id': typeof AuthenticatedPortalIdRoute
   '/_authenticated/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/_authenticated/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/unauthorized'
     | '/portal'
+    | '/apply/$slug'
     | '/portal/$id'
     | '/portal/activity'
     | '/portal/candidates'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/unauthorized'
+    | '/apply/$slug'
     | '/portal/$id'
     | '/portal/activity'
     | '/portal/candidates'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/unauthorized'
     | '/_authenticated/portal'
+    | '/apply/$slug'
     | '/_authenticated/portal/$id'
     | '/_authenticated/portal/activity'
     | '/_authenticated/portal/candidates'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  ApplySlugRoute: typeof ApplySlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply/$slug': {
+      id: '/apply/$slug'
+      path: '/apply/$slug'
+      fullPath: '/apply/$slug'
+      preLoaderRoute: typeof ApplySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/portal': {
@@ -387,6 +407,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  ApplySlugRoute: ApplySlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
