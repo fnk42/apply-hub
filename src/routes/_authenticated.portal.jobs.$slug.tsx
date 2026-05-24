@@ -354,21 +354,29 @@ function JobAdDetailPage() {
                     {c.years_of_experience ?? "—"}
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={c.pipeline_status}
-                      onValueChange={(v) => changeStatus(c.id, v)}
-                    >
-                      <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
-                        <StatusBadge value={c.pipeline_status} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>
-                            {v}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(() => {
+                      const sid = resolveStageId(c);
+                      const cur = sid ? stageById.get(sid) : null;
+                      return (
+                        <Select
+                          value={sid ?? ""}
+                          onValueChange={(v) => changeStage(c.id, v)}
+                        >
+                          <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                              {cur?.label ?? "—"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {stages.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <FitBadge value={c.fit} />
