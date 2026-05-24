@@ -29,16 +29,14 @@ const settingsQ = queryOptions({
   queryFn: () => getAppSettings(),
 });
 
+const rolesQ = queryOptions({
+  queryKey: ["my-roles"],
+  queryFn: () => getMyRoles(),
+});
+
 export const Route = createFileRoute("/_authenticated/portal/jobs/new")({
-  beforeLoad: async () => {
-    const { roles } = await getMyRoles();
-    if (!roles.includes("admin")) throw redirect({ to: "/portal/jobs" });
-  },
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(clientsQ),
-      context.queryClient.ensureQueryData(settingsQ),
-    ]);
+    await context.queryClient.ensureQueryData(rolesQ);
   },
   component: NewJobAdPage,
 });
