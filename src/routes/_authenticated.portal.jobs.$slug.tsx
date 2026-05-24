@@ -193,6 +193,22 @@ function JobAdDetailPage() {
   }
 
 
+  async function doSetStatus(next: "closed" | "live") {
+    setStatusBusy(true);
+    try {
+      await setJobAdStatus({ data: { id: ad.id, status: next } });
+      qc.invalidateQueries({ queryKey: ["job-ad", slug] });
+      qc.invalidateQueries({ queryKey: ["portal-shell"] });
+      toast.success(next === "closed" ? "Ad closed" : "Ad reopened");
+      setCloseOpen(false);
+      setReopenOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       {/* Header */}
@@ -226,29 +242,19 @@ function JobAdDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {ad.linkedin_job_url ? (
-              <a
-                href={ad.linkedin_job_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            {isAdmin && ad.status !== "closed" && (
+              <Button
+                variant="outline"
+                onClick={() => setCloseOpen(true)}
+                className="text-destructive hover:text-destructive"
               >
-                <Linkedin className="h-4 w-4" /> LinkedIn
-              </a>
-            ) : (
-              <span className="text-xs italic text-muted-foreground">
-                No LinkedIn URL set
-              </span>
+                <Lock className="mr-1 h-4 w-4" /> Close ad
+              </Button>
             )}
-            {ad.jd_url && (
-              <a
-                href={ad.jd_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted"
-              >
-                <FileText className="h-4 w-4" /> View JD
-              </a>
+            {isAdmin && ad.status === "closed" && (
+              <Button variant="outline" onClick={() => setReopenOpen(true)}>
+                <RotateCcw className="mr-1 h-4 w-4" /> Reopen ad
+              </Button>
             )}
             {isAdmin && (
               <Button asChild variant="outline">
@@ -266,7 +272,66 @@ function JobAdDetailPage() {
         </div>
       </div>
 
+      {/* JD Panel */}
+      <JdPanel
+        ad={ad}
+        isAdmin={isAdmin}
+        expanded={jdExpanded}
+        onToggle={() => setJdExpanded((v) => !v)}
+      />
+
       {ad.status === "live" && <ShareLinkCard slug={ad.slug} />}
+
+      <AlertDialog open={closeOpen} onOpenChange={setCloseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close this ad?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existing candidates remain visible, but no new applications will be accepted on
+              the public apply link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                doSetStatus("closed");
+              }}
+              disabled={statusBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {statusBusy ? "Closing…" : "Close ad"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen this ad?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The ad will go live again and start accepting applications on the public apply
+              link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                doSetStatus("live");
+              }}
+              disabled={statusBusy}
+            >
+              {statusBusy ? "Reopening…" : "Reopen ad"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       {/* Candidates */}
 
