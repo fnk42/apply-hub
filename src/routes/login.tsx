@@ -17,7 +17,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const navigate = useNavigate();
+  
   const { redirect: redirectTo } = Route.useSearch();
   const destination = redirectTo || "/portal";
   const [email, setEmail] = useState("");
