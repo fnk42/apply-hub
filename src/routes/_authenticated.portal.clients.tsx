@@ -65,6 +65,21 @@ function ClientsPage() {
     }
   }
 
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete client "${name}"? This will also remove all of their job ads, candidates, and payments. This cannot be undone.`)) return;
+    setBusy(id);
+    try {
+      await deleteClient({ data: { client_id: id } });
+      toast.success("Client deleted");
+      qc.invalidateQueries({ queryKey: ["admin-clients"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <div className="flex items-start justify-between gap-4">
