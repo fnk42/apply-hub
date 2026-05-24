@@ -34,7 +34,7 @@ import {
   FitBadge,
   FIT_LABELS,
 } from "@/components/portal/Badges";
-import { ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
+import { Copy, ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
