@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { waitForInitialSession } from "@/integrations/supabase/wait-for-session";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async ({ location }) => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
+    const session = await waitForInitialSession();
+    if (!session) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },
