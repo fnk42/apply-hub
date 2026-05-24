@@ -53,7 +53,7 @@ function LoginPage() {
           password,
         });
         if (error) throw error;
-        navigate({ to: "/portal" });
+        window.location.href = destination;
       }
     } catch (err: any) {
       toast.error(err?.message || "Sign-in failed");
