@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { company } from "@/config/company";
@@ -38,9 +38,9 @@ function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
 
-  function goToDestination() {
+  const goToDestination = useCallback(() => {
     void navigate({ to: destination as any });
-  }
+  }, [destination, navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +60,7 @@ function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [destination]);
+  }, [goToDestination]);
 
 
 
