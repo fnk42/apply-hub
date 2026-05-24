@@ -311,6 +311,96 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          client_id: string
+          created_at: string
+          currency: string
+          id: string
+          job_ad_id: string
+          notes: string | null
+          paid_at: string | null
+          status: string
+          triggered_by: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          client_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          job_ad_id: string
+          notes?: string | null
+          paid_at?: string | null
+          status?: string
+          triggered_by?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          client_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          job_ad_id?: string
+          notes?: string | null
+          paid_at?: string | null
+          status?: string
+          triggered_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_job_ad_id_fkey"
+            columns: ["job_ad_id"]
+            isOneToOne: false
+            referencedRelation: "job_ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
