@@ -20,6 +20,7 @@ import { Route as AuthenticatedPortalShortlistRouteImport } from './routes/_auth
 import { Route as AuthenticatedPortalSettingsRouteImport } from './routes/_authenticated.portal.settings'
 import { Route as AuthenticatedPortalClientsRouteImport } from './routes/_authenticated.portal.clients'
 import { Route as AuthenticatedPortalCandidatesRouteImport } from './routes/_authenticated.portal.candidates'
+import { Route as AuthenticatedPortalAdminRouteImport } from './routes/_authenticated.portal.admin'
 import { Route as AuthenticatedPortalActivityRouteImport } from './routes/_authenticated.portal.activity'
 import { Route as AuthenticatedPortalIdRouteImport } from './routes/_authenticated.portal.$id'
 import { Route as AuthenticatedPortalJobsIndexRouteImport } from './routes/_authenticated.portal.jobs.index'
@@ -86,6 +87,12 @@ const AuthenticatedPortalCandidatesRoute =
     path: '/candidates',
     getParentRoute: () => AuthenticatedPortalRoute,
   } as any)
+const AuthenticatedPortalAdminRoute =
+  AuthenticatedPortalAdminRouteImport.update({
+    id: '/admin',
+    path: '/admin',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
 const AuthenticatedPortalActivityRoute =
   AuthenticatedPortalActivityRouteImport.update({
     id: '/activity',
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/apply/$slug': typeof ApplySlugRoute
   '/portal/$id': typeof AuthenticatedPortalIdRoute
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
+  '/portal/admin': typeof AuthenticatedPortalAdminRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
   '/portal/clients': typeof AuthenticatedPortalClientsRoute
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
@@ -147,6 +155,7 @@ export interface FileRoutesByTo {
   '/apply/$slug': typeof ApplySlugRoute
   '/portal/$id': typeof AuthenticatedPortalIdRoute
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
+  '/portal/admin': typeof AuthenticatedPortalAdminRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
   '/portal/clients': typeof AuthenticatedPortalClientsRoute
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
@@ -167,6 +176,7 @@ export interface FileRoutesById {
   '/apply/$slug': typeof ApplySlugRoute
   '/_authenticated/portal/$id': typeof AuthenticatedPortalIdRoute
   '/_authenticated/portal/activity': typeof AuthenticatedPortalActivityRoute
+  '/_authenticated/portal/admin': typeof AuthenticatedPortalAdminRoute
   '/_authenticated/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
   '/_authenticated/portal/clients': typeof AuthenticatedPortalClientsRoute
   '/_authenticated/portal/settings': typeof AuthenticatedPortalSettingsRoute
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/apply/$slug'
     | '/portal/$id'
     | '/portal/activity'
+    | '/portal/admin'
     | '/portal/candidates'
     | '/portal/clients'
     | '/portal/settings'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/apply/$slug'
     | '/portal/$id'
     | '/portal/activity'
+    | '/portal/admin'
     | '/portal/candidates'
     | '/portal/clients'
     | '/portal/settings'
@@ -223,6 +235,7 @@ export interface FileRouteTypes {
     | '/apply/$slug'
     | '/_authenticated/portal/$id'
     | '/_authenticated/portal/activity'
+    | '/_authenticated/portal/admin'
     | '/_authenticated/portal/candidates'
     | '/_authenticated/portal/clients'
     | '/_authenticated/portal/settings'
@@ -321,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortalCandidatesRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
+    '/_authenticated/portal/admin': {
+      id: '/_authenticated/portal/admin'
+      path: '/admin'
+      fullPath: '/portal/admin'
+      preLoaderRoute: typeof AuthenticatedPortalAdminRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
     '/_authenticated/portal/activity': {
       id: '/_authenticated/portal/activity'
       path: '/activity'
@@ -387,6 +407,7 @@ const AuthenticatedPortalJobsSlugRouteWithChildren =
 interface AuthenticatedPortalRouteChildren {
   AuthenticatedPortalIdRoute: typeof AuthenticatedPortalIdRoute
   AuthenticatedPortalActivityRoute: typeof AuthenticatedPortalActivityRoute
+  AuthenticatedPortalAdminRoute: typeof AuthenticatedPortalAdminRoute
   AuthenticatedPortalCandidatesRoute: typeof AuthenticatedPortalCandidatesRoute
   AuthenticatedPortalClientsRoute: typeof AuthenticatedPortalClientsRoute
   AuthenticatedPortalSettingsRoute: typeof AuthenticatedPortalSettingsRoute
@@ -399,6 +420,7 @@ interface AuthenticatedPortalRouteChildren {
 const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
   AuthenticatedPortalIdRoute: AuthenticatedPortalIdRoute,
   AuthenticatedPortalActivityRoute: AuthenticatedPortalActivityRoute,
+  AuthenticatedPortalAdminRoute: AuthenticatedPortalAdminRoute,
   AuthenticatedPortalCandidatesRoute: AuthenticatedPortalCandidatesRoute,
   AuthenticatedPortalClientsRoute: AuthenticatedPortalClientsRoute,
   AuthenticatedPortalSettingsRoute: AuthenticatedPortalSettingsRoute,
