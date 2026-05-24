@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { getPortalShell } from "@/lib/candidates.functions";
-import { Briefcase } from "lucide-react";
+import { getPortalShell, getMyRoles } from "@/lib/candidates.functions";
+import { Briefcase, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const shellQuery = queryOptions({
@@ -9,8 +10,17 @@ const shellQuery = queryOptions({
   queryFn: () => getPortalShell(),
 });
 
+const rolesQuery = queryOptions({
+  queryKey: ["my-roles"],
+  queryFn: () => getMyRoles(),
+});
+
 export const Route = createFileRoute("/_authenticated/portal/jobs/")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(shellQuery),
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(shellQuery),
+      context.queryClient.ensureQueryData(rolesQuery),
+    ]),
   component: JobsIndexPage,
 });
 
@@ -22,13 +32,25 @@ const GROUPS: { key: string; label: string; statuses: string[] }[] = [
 
 function JobsIndexPage() {
   const { data } = useSuspenseQuery(shellQuery);
+  const { data: rolesData } = useSuspenseQuery(rolesQuery);
+  const isAdmin = rolesData.roles.includes("admin");
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
-      <div>
-        <h1 className="font-serif text-4xl tracking-tight text-foreground">Job Ads</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          All job ads across clients, grouped by status.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-4xl tracking-tight text-foreground">Job Ads</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            All job ads across clients, grouped by status.
+          </p>
+        </div>
+        {isAdmin && (
+          <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Link to="/portal/jobs/new">
+              <Plus className="mr-1 h-4 w-4" /> New job ad
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="mt-8 space-y-8">

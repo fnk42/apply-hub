@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -49,10 +49,20 @@ export const Route = createFileRoute("/_authenticated/portal/admin")({
 function AdminPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="font-serif text-4xl tracking-tight">Admin</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Billing and workspace configuration.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-4xl tracking-tight">Admin</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Billing and workspace configuration.
+          </p>
+        </div>
+        <Link
+          to="/portal/jobs/new"
+          className="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90"
+        >
+          + New job ad
+        </Link>
+      </div>
       <Tabs defaultValue="billing" className="mt-6">
         <TabsList>
           <TabsTrigger value="billing">Billing</TabsTrigger>

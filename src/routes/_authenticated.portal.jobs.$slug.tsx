@@ -12,6 +12,7 @@ import {
   listJobAdStages,
   updateCandidate,
 } from "@/lib/candidates.functions";
+import { setJobAdStatus } from "@/lib/jobs.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,10 +32,33 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   FitBadge,
   FIT_LABELS,
 } from "@/components/portal/Badges";
-import { Copy, ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
+  FileText,
+  Linkedin,
+  Lock,
+  Plus,
+  RotateCcw,
+  Search,
+  Settings2,
+  Star,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -105,6 +129,10 @@ function JobAdDetailPage() {
   const [fit, setFit] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [shortlist, setShortlist] = useState<string>("all");
+  const [jdExpanded, setJdExpanded] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const all = candData.candidates;
   const inboundCount = all.filter((c) => c.source === "public_form").length;
@@ -165,6 +193,22 @@ function JobAdDetailPage() {
   }
 
 
+  async function doSetStatus(next: "closed" | "live") {
+    setStatusBusy(true);
+    try {
+      await setJobAdStatus({ data: { id: ad.id, status: next } });
+      qc.invalidateQueries({ queryKey: ["job-ad", slug] });
+      qc.invalidateQueries({ queryKey: ["portal-shell"] });
+      toast.success(next === "closed" ? "Ad closed" : "Ad reopened");
+      setCloseOpen(false);
+      setReopenOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       {/* Header */}
@@ -198,29 +242,19 @@ function JobAdDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {ad.linkedin_job_url ? (
-              <a
-                href={ad.linkedin_job_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            {isAdmin && ad.status !== "closed" && (
+              <Button
+                variant="outline"
+                onClick={() => setCloseOpen(true)}
+                className="text-destructive hover:text-destructive"
               >
-                <Linkedin className="h-4 w-4" /> LinkedIn
-              </a>
-            ) : (
-              <span className="text-xs italic text-muted-foreground">
-                No LinkedIn URL set
-              </span>
+                <Lock className="mr-1 h-4 w-4" /> Close ad
+              </Button>
             )}
-            {ad.jd_url && (
-              <a
-                href={ad.jd_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted"
-              >
-                <FileText className="h-4 w-4" /> View JD
-              </a>
+            {isAdmin && ad.status === "closed" && (
+              <Button variant="outline" onClick={() => setReopenOpen(true)}>
+                <RotateCcw className="mr-1 h-4 w-4" /> Reopen ad
+              </Button>
             )}
             {isAdmin && (
               <Button asChild variant="outline">
@@ -238,7 +272,66 @@ function JobAdDetailPage() {
         </div>
       </div>
 
+      {/* JD Panel */}
+      <JdPanel
+        ad={ad}
+        isAdmin={isAdmin}
+        expanded={jdExpanded}
+        onToggle={() => setJdExpanded((v) => !v)}
+      />
+
       {ad.status === "live" && <ShareLinkCard slug={ad.slug} />}
+
+      <AlertDialog open={closeOpen} onOpenChange={setCloseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close this ad?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existing candidates remain visible, but no new applications will be accepted on
+              the public apply link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                doSetStatus("closed");
+              }}
+              disabled={statusBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {statusBusy ? "Closing…" : "Close ad"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen this ad?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The ad will go live again and start accepting applications on the public apply
+              link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                doSetStatus("live");
+              }}
+              disabled={statusBusy}
+            >
+              {statusBusy ? "Reopening…" : "Reopen ad"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       {/* Candidates */}
 
@@ -472,4 +565,123 @@ function ShareLinkCard({ slug }: { slug: string }) {
     </div>
   );
 }
+
+function JdPanel({
+  ad,
+  isAdmin,
+  expanded,
+  onToggle,
+}: {
+  ad: {
+    jd_text: string | null;
+    jd_url: string | null;
+    linkedin_job_url: string | null;
+    posting_fee_cents?: number | null;
+    is_billable?: boolean | null;
+    billing_triggered_at?: string | null;
+  };
+  isAdmin: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const hasJdText = !!(ad.jd_text && ad.jd_text.trim());
+  const hasAnyLink = !!(ad.jd_url || ad.linkedin_job_url);
+  if (!hasJdText && !hasAnyLink && !isAdmin) return null;
+
+  const fee = (ad as any).posting_fee_cents as number | null | undefined;
+  const billable = !!(ad as any).is_billable;
+  const triggered = (ad as any).billing_triggered_at as string | null | undefined;
+
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-card">
+      <div className="flex items-center justify-between px-6 py-3">
+        <h2 className="font-serif text-xl tracking-tight">Job description</h2>
+        <div className="flex items-center gap-2">
+          {ad.linkedin_job_url && (
+            <a
+              href={ad.linkedin_job_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
+            >
+              <Linkedin className="h-3.5 w-3.5" /> LinkedIn
+            </a>
+          )}
+          {ad.jd_url && (
+            <a
+              href={ad.jd_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
+            >
+              <FileText className="h-3.5 w-3.5" /> JD link
+            </a>
+          )}
+          {hasJdText && (
+            <Button variant="ghost" size="sm" onClick={onToggle}>
+              {expanded ? (
+                <>
+                  <ChevronUp className="mr-1 h-4 w-4" /> Collapse
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-1 h-4 w-4" /> Show more
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {hasJdText && (
+        <div className="border-t border-border px-6 py-4">
+          <pre
+            className={cn(
+              "whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/90",
+              !expanded && "line-clamp-6",
+            )}
+          >
+            {ad.jd_text}
+          </pre>
+        </div>
+      )}
+
+      {!hasJdText && !hasAnyLink && isAdmin && (
+        <div className="border-t border-border px-6 py-4 text-sm italic text-muted-foreground">
+          No JD text or links added yet.
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="flex flex-wrap items-center gap-4 border-t border-border bg-muted/30 px-6 py-2 text-xs text-muted-foreground">
+          <span>
+            Billable:{" "}
+            <span className="font-medium text-foreground">
+              {billable ? "Yes" : "No"}
+            </span>
+          </span>
+          <span>
+            Posting fee:{" "}
+            <span className="font-medium text-foreground">
+              {typeof fee === "number" && fee > 0
+                ? `$${(fee / 100).toLocaleString()}`
+                : "—"}
+            </span>
+          </span>
+          <span>
+            Billing:{" "}
+            <span className="font-medium text-foreground">
+              {triggered
+                ? `triggered ${format(new Date(triggered), "d MMM yyyy")}`
+                : billable
+                  ? "pending (auto at 10 candidates)"
+                  : "n/a"}
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 

@@ -327,7 +327,7 @@ export const getJobAdBySlug = createServerFn({ method: "POST" })
     const { data: ad, error } = await supabase
       .from("job_ads")
       .select(
-        "id, slug, title, status, roles_count, start_date, linkedin_job_url, jd_url, jd_text, client_id, authorized_at, closed_at, created_at",
+        "id, slug, title, status, roles_count, start_date, linkedin_job_url, jd_url, jd_text, client_id, authorized_at, closed_at, created_at, posting_fee_cents, is_billable, billing_triggered_at",
       )
       .eq("slug", data.slug)
       .maybeSingle();
