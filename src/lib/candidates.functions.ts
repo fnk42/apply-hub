@@ -154,6 +154,7 @@ const updateInput = z.object({
     .object({
       fit: z.enum(FIT_VALUES).optional(),
       pipeline_status: z.enum(STATUS_VALUES).optional(),
+      stage_id: z.string().uuid().nullable().optional(),
       recruiter_notes: z.string().max(10000).nullable().optional(),
       current_company: z.string().trim().max(160).nullable().optional(),
       current_title: z.string().trim().max(160).nullable().optional(),
@@ -168,16 +169,33 @@ export const updateCandidate = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => updateInput.parse(data))
   .handler(async ({ context, data }) => {
     const { supabase } = context;
+    const patch: Record<string, unknown> = { ...data.patch };
+    // Keep pipeline_status in sync when stage_id changes (legacy compat for now)
+    if (data.patch.stage_id !== undefined) {
+      if (data.patch.stage_id === null) {
+        // leave pipeline_status as-is
+      } else {
+        const { data: stage } = await supabase
+          .from("job_ad_stages")
+          .select("legacy_status")
+          .eq("id", data.patch.stage_id)
+          .maybeSingle();
+        if (stage?.legacy_status) {
+          patch.pipeline_status = stage.legacy_status;
+        }
+      }
+    }
     const { error } = await supabase
       .from("applications")
-      .update(data.patch)
+      .update(patch)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-// ---- createCandidate (manual add) ----
+// ---- createCandidate (manual add, scoped to a job ad) ----
 const createInput = z.object({
+  job_ad_id: z.string().uuid(),
   full_name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(255),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
@@ -193,11 +211,21 @@ export const createCandidate = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => createInput.parse(data))
   .handler(async ({ context, data }) => {
     const { supabase } = context;
+    // Default stage = position 1 for this ad
+    const { data: firstStage } = await supabase
+      .from("job_ad_stages")
+      .select("id, legacy_status")
+      .eq("job_ad_id", data.job_ad_id)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
     const { data: row, error } = await supabase
       .from("applications")
       .insert({
         source: "manual",
-        job_ad_id: "00000000-0000-0000-0000-000000000010",
+        job_ad_id: data.job_ad_id,
+        stage_id: firstStage?.id ?? null,
+        pipeline_status: firstStage?.legacy_status ?? "sourced",
         full_name: data.full_name,
         email: data.email,
         phone: data.phone || null,
@@ -213,6 +241,116 @@ export const createCandidate = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
+
+// ---- listJobAdStages ----
+export const listJobAdStages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ job_ad_id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    const { data: stages, error } = await supabase
+      .from("job_ad_stages")
+      .select("id, label, position, is_default, legacy_status")
+      .eq("job_ad_id", data.job_ad_id)
+      .order("position", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { stages: stages ?? [] };
+  });
+
+// ---- upsertJobAdStage (admin) ----
+const upsertStageInput = z.object({
+  id: z.string().uuid().optional(),
+  job_ad_id: z.string().uuid(),
+  label: z.string().trim().min(1).max(60),
+  position: z.number().int().min(1).max(50).optional(),
+});
+
+export const upsertJobAdStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => upsertStageInput.parse(data))
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    if (data.id) {
+      const patch: Record<string, unknown> = { label: data.label };
+      if (data.position !== undefined) patch.position = data.position;
+      const { error } = await supabase
+        .from("job_ad_stages")
+        .update(patch)
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    // Insert: append at end
+    let pos = data.position;
+    if (pos === undefined) {
+      const { data: last } = await supabase
+        .from("job_ad_stages")
+        .select("position")
+        .eq("job_ad_id", data.job_ad_id)
+        .order("position", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      pos = (last?.position ?? 0) + 1;
+    }
+    const { error } = await supabase
+      .from("job_ad_stages")
+      .insert({ job_ad_id: data.job_ad_id, label: data.label, position: pos });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---- deleteJobAdStage (admin) ----
+export const deleteJobAdStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    const { error } = await supabase
+      .from("job_ad_stages")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---- reorderJobAdStages (admin) ----
+export const reorderJobAdStages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        job_ad_id: z.string().uuid(),
+        order: z.array(z.string().uuid()).min(1).max(50),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    // Two-pass swap to avoid unique (job_ad_id, position) collisions
+    for (let i = 0; i < data.order.length; i++) {
+      const tempPos = -(i + 1);
+      const { error } = await supabase
+        .from("job_ad_stages")
+        .update({ position: tempPos })
+        .eq("id", data.order[i])
+        .eq("job_ad_id", data.job_ad_id);
+      if (error) throw new Error(error.message);
+    }
+    for (let i = 0; i < data.order.length; i++) {
+      const { error } = await supabase
+        .from("job_ad_stages")
+        .update({ position: i + 1 })
+        .eq("id", data.order[i])
+        .eq("job_ad_id", data.job_ad_id);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
 
 // ---- getResumeSignedUrl ----
 export const getResumeSignedUrl = createServerFn({ method: "POST" })
