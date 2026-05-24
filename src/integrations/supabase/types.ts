@@ -93,6 +93,7 @@ export type Database = {
           screening_answers: Json
           shortlisted: boolean
           source: string
+          stage_id: string | null
           updated_at: string
           years_of_experience: number | null
         }
@@ -115,6 +116,7 @@ export type Database = {
           screening_answers?: Json
           shortlisted?: boolean
           source?: string
+          stage_id?: string | null
           updated_at?: string
           years_of_experience?: number | null
         }
@@ -137,6 +139,7 @@ export type Database = {
           screening_answers?: Json
           shortlisted?: boolean
           source?: string
+          stage_id?: string | null
           updated_at?: string
           years_of_experience?: number | null
         }
@@ -146,6 +149,13 @@ export type Database = {
             columns: ["job_ad_id"]
             isOneToOne: false
             referencedRelation: "job_ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_ad_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -185,6 +195,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      job_ad_stages: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          job_ad_id: string
+          label: string
+          legacy_status: string | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          job_ad_id: string
+          label: string
+          legacy_status?: string | null
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          job_ad_id?: string
+          label?: string
+          legacy_status?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_ad_stages_job_ad_id_fkey"
+            columns: ["job_ad_id"]
+            isOneToOne: false
+            referencedRelation: "job_ads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_ads: {
         Row: {
