@@ -88,7 +88,7 @@ export const createJobAd = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabaseAdmin
       .from("job_ads")
-      .insert(insert)
+      .insert(insert as never)
       .select("id, slug")
       .single();
     if (error) throw new Error(error.message);
