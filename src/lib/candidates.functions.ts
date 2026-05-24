@@ -129,6 +129,7 @@ export const createCandidate = createServerFn({ method: "POST" })
       .from("applications")
       .insert({
         source: "manual",
+        job_ad_id: "00000000-0000-0000-0000-000000000010",
         full_name: data.full_name,
         email: data.email,
         phone: data.phone || null,
