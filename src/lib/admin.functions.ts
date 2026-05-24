@@ -21,7 +21,7 @@ export const listPayments = createServerFn({ method: "GET" })
     await assertAdmin(context.supabase, context.userId);
     const { data, error } = await supabaseAdmin
       .from("payments")
-      .select("id, job_ad_id, client_id, amount_cents, currency, status, triggered_by, notes, paid_at, created_at")
+      .select("id, job_ad_id, client_id, amount, currency, status, triggered_by, notes, paid_at, created_at")
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
@@ -90,7 +90,7 @@ export const getAppSettings = createServerFn({ method: "GET" })
         (map.app_name as any)?.name ??
         (typeof map.app_name === "string" ? map.app_name : null) ??
         "Project Dashboard",
-      defaultPostingFeeCents: Number(map.default_posting_fee_cents ?? 50000),
+      defaultPostingFee: Number(map.default_posting_fee ?? 35000),
     };
   });
 
@@ -100,7 +100,7 @@ export const updateAppSettings = createServerFn({ method: "POST" })
     z
       .object({
         appName: z.string().trim().min(1).max(120).optional(),
-        defaultPostingFeeCents: z.number().int().min(0).max(100_000_000).optional(),
+        defaultPostingFee: z.number().int().min(0).max(100_000_000).optional(),
       })
       .parse(data),
   )
@@ -110,8 +110,8 @@ export const updateAppSettings = createServerFn({ method: "POST" })
     if (data.appName !== undefined) {
       updates.push({ key: "app_name", value: { name: data.appName } });
     }
-    if (data.defaultPostingFeeCents !== undefined) {
-      updates.push({ key: "default_posting_fee_cents", value: data.defaultPostingFeeCents });
+    if (data.defaultPostingFee !== undefined) {
+      updates.push({ key: "default_posting_fee", value: data.defaultPostingFee });
     }
     for (const u of updates) {
       const { error } = await supabaseAdmin
@@ -120,6 +120,58 @@ export const updateAppSettings = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
     return { ok: true };
+  });
+
+// ============ JOB ADS (admin overview) ============
+
+export const listAllJobAds = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { data: ads, error } = await supabaseAdmin
+      .from("job_ads")
+      .select(
+        "id, slug, title, status, roles_count, is_billable, posting_fee, billing_triggered_at, created_at, client_id",
+      )
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const clientIds = Array.from(new Set((ads ?? []).map((a) => a.client_id)));
+    let clientMap = new Map<string, { id: string; name: string }>();
+    if (clientIds.length) {
+      const { data: cs } = await supabaseAdmin
+        .from("clients")
+        .select("id, name")
+        .in("id", clientIds);
+      clientMap = new Map((cs ?? []).map((c) => [c.id, c]));
+    }
+
+    // Count any paid payments per job ad to mark "paid"
+    const { data: pays } = await supabaseAdmin
+      .from("payments")
+      .select("job_ad_id, status");
+    const paidJobs = new Set(
+      (pays ?? []).filter((p) => p.status === "paid").map((p) => p.job_ad_id),
+    );
+    const pendingJobs = new Set(
+      (pays ?? []).filter((p) => p.status === "pending").map((p) => p.job_ad_id),
+    );
+
+    return {
+      ads: (ads ?? []).map((a) => ({
+        ...a,
+        client: clientMap.get(a.client_id) ?? null,
+        billing_state: paidJobs.has(a.id)
+          ? "paid"
+          : pendingJobs.has(a.id)
+            ? "pending"
+            : a.billing_triggered_at
+              ? "triggered"
+              : a.is_billable
+                ? "awaiting_10"
+                : "not_billable",
+      })),
+    };
   });
 
 // ============ NOTIFICATIONS ============

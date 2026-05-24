@@ -150,7 +150,7 @@ export const listCandidates = createServerFn({ method: "POST" })
     let q = supabase
       .from("applications")
       .select(
-        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, stage_id, shortlisted, job_ad_id",
+        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, stage_id, shortlisted, job_ad_id, resume_url",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -327,7 +327,7 @@ export const getJobAdBySlug = createServerFn({ method: "POST" })
     const { data: ad, error } = await supabase
       .from("job_ads")
       .select(
-        "id, slug, title, status, roles_count, start_date, linkedin_job_url, jd_url, jd_text, client_id, authorized_at, closed_at, created_at, posting_fee_cents, is_billable, billing_triggered_at",
+        "id, slug, title, status, roles_count, start_date, linkedin_job_url, jd_url, jd_text, client_id, authorized_at, closed_at, created_at, posting_fee, is_billable, billing_triggered_at",
       )
       .eq("slug", data.slug)
       .maybeSingle();
