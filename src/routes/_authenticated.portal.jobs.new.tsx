@@ -58,10 +58,10 @@ function NewJobAdPage() {
   const navigate = useNavigate();
 
   const defaultFeeDollars = useMemo(() => {
-    const cents = settingsData.settings?.default_posting_fee_cents;
-    if (typeof cents === "number") return String(Math.round(cents / 100));
+    const cents = settingsData?.defaultPostingFeeCents;
+    if (typeof cents === "number" && cents > 0) return String(Math.round(cents / 100));
     return "";
-  }, [settingsData.settings]);
+  }, [settingsData]);
 
   const [clientId, setClientId] = useState<string>("");
   const [title, setTitle] = useState("");
