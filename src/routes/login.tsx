@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { company } from "@/config/company";
@@ -10,15 +10,30 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: `Sign in — ${company.name}` }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+  }),
   component: LoginPage,
 });
 
 function LoginPage() {
-  const navigate = useNavigate();
+  
+  const { redirect: redirectTo } = Route.useSearch();
+  const destination = redirectTo || "/portal";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        window.location.href = destination;
+      }
+    });
+  }, [destination]);
+
+
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +43,7 @@ function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/portal` },
+          options: { emailRedirectTo: `${window.location.origin}${destination}` },
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
@@ -38,7 +53,7 @@ function LoginPage() {
           password,
         });
         if (error) throw error;
-        navigate({ to: "/portal" });
+        window.location.href = destination;
       }
     } catch (err: any) {
       toast.error(err?.message || "Sign-in failed");
@@ -51,10 +66,10 @@ function LoginPage() {
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/portal`,
+        redirect_uri: `${window.location.origin}${destination}`,
       });
       if (result.error) throw result.error;
-      if (!result.redirected) navigate({ to: "/portal" });
+      if (!result.redirected) window.location.href = destination;
     } catch (err: any) {
       toast.error(err?.message || "Google sign-in failed");
       setLoading(false);

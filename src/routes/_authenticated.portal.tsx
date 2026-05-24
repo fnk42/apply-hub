@@ -6,17 +6,12 @@ import { AppSidebar } from "@/components/portal/AppSidebar";
 
 export const Route = createFileRoute("/_authenticated/portal")({
   beforeLoad: async () => {
-    try {
-      const { roles } = await getMyRoles();
-      const ok =
-        roles.includes("admin") ||
-        roles.includes("recruiter") ||
-        roles.includes("member");
-      if (!ok) throw redirect({ to: "/unauthorized" });
-    } catch (e: any) {
-      if (e?.isRedirect) throw e;
-      throw redirect({ to: "/unauthorized" });
-    }
+    const { roles } = await getMyRoles();
+    const ok =
+      roles.includes("admin") ||
+      roles.includes("recruiter") ||
+      roles.includes("member");
+    if (!ok) throw redirect({ to: "/unauthorized" });
   },
   component: PortalLayout,
 });
