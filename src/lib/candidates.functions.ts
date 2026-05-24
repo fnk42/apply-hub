@@ -42,7 +42,7 @@ export const listCandidates = createServerFn({ method: "POST" })
     let q = supabase
       .from("applications")
       .select(
-        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, shortlisted, job_ad_id",
+        "id, created_at, source, full_name, email, phone, linkedin_url, current_company, current_title, years_of_experience, fit, pipeline_status, stage_id, shortlisted, job_ad_id",
       )
       .order("created_at", { ascending: false })
       .limit(500);
