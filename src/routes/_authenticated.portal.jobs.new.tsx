@@ -51,6 +51,14 @@ function slugify(input: string): string {
 }
 
 function NewJobAdPage() {
+  const { data: rolesData } = useSuspenseQuery(rolesQ);
+  if (!rolesData.roles.includes("admin")) {
+    return <Navigate to="/portal/jobs" />;
+  }
+  return <NewJobAdForm />;
+}
+
+function NewJobAdForm() {
   const { data: clientsData } = useSuspenseQuery(clientsQ);
   const { data: settingsData } = useSuspenseQuery(settingsQ);
   const navigate = useNavigate();
