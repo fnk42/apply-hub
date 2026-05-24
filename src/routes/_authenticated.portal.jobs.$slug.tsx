@@ -222,8 +222,15 @@ function JobAdDetailPage() {
                 <FileText className="h-4 w-4" /> View JD
               </a>
             )}
+            {isAdmin && (
+              <Button asChild variant="outline">
+                <Link to="/portal/jobs/$slug/stages" params={{ slug }}>
+                  <Settings2 className="mr-1 h-4 w-4" /> Stages
+                </Link>
+              </Button>
+            )}
             <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link to="/portal/new">
+              <Link to="/portal/jobs/$slug/add-candidate" params={{ slug }}>
                 <Plus className="mr-1 h-4 w-4" /> Add candidate
               </Link>
             </Button>
