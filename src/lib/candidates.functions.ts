@@ -657,6 +657,35 @@ export const getResumeSignedUrl = createServerFn({ method: "POST" })
     return { url: signed.signedUrl };
   });
 
+// ---- getResumeBlob ----
+// Streams resume bytes through the app origin so ad blockers / privacy
+// extensions can't ERR_BLOCKED_BY_CLIENT the supabase.co URL.
+export const getResumeBlob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ path: z.string().min(1).max(500) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { data: file, error } = await supabaseAdmin.storage
+      .from("resumes")
+      .download(data.path);
+    if (error || !file) throw new Error(error?.message || "Resume not found");
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+    }
+    const base64 = btoa(binary);
+    const filename = data.path.split("/").pop() || "resume";
+    return {
+      base64,
+      contentType: file.type || "application/octet-stream",
+      filename,
+    };
+  });
+
 // ---- getDashboardStats ----
 export const getDashboardStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
