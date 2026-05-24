@@ -566,3 +566,122 @@ function ShareLinkCard({ slug }: { slug: string }) {
   );
 }
 
+function JdPanel({
+  ad,
+  isAdmin,
+  expanded,
+  onToggle,
+}: {
+  ad: {
+    jd_text: string | null;
+    jd_url: string | null;
+    linkedin_job_url: string | null;
+    posting_fee_cents?: number | null;
+    is_billable?: boolean | null;
+    billing_triggered_at?: string | null;
+  };
+  isAdmin: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const hasJdText = !!(ad.jd_text && ad.jd_text.trim());
+  const hasAnyLink = !!(ad.jd_url || ad.linkedin_job_url);
+  if (!hasJdText && !hasAnyLink && !isAdmin) return null;
+
+  const fee = (ad as any).posting_fee_cents as number | null | undefined;
+  const billable = !!(ad as any).is_billable;
+  const triggered = (ad as any).billing_triggered_at as string | null | undefined;
+
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-card">
+      <div className="flex items-center justify-between px-6 py-3">
+        <h2 className="font-serif text-xl tracking-tight">Job description</h2>
+        <div className="flex items-center gap-2">
+          {ad.linkedin_job_url && (
+            <a
+              href={ad.linkedin_job_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
+            >
+              <Linkedin className="h-3.5 w-3.5" /> LinkedIn
+            </a>
+          )}
+          {ad.jd_url && (
+            <a
+              href={ad.jd_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
+            >
+              <FileText className="h-3.5 w-3.5" /> JD link
+            </a>
+          )}
+          {hasJdText && (
+            <Button variant="ghost" size="sm" onClick={onToggle}>
+              {expanded ? (
+                <>
+                  <ChevronUp className="mr-1 h-4 w-4" /> Collapse
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-1 h-4 w-4" /> Show more
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {hasJdText && (
+        <div className="border-t border-border px-6 py-4">
+          <pre
+            className={cn(
+              "whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/90",
+              !expanded && "line-clamp-6",
+            )}
+          >
+            {ad.jd_text}
+          </pre>
+        </div>
+      )}
+
+      {!hasJdText && !hasAnyLink && isAdmin && (
+        <div className="border-t border-border px-6 py-4 text-sm italic text-muted-foreground">
+          No JD text or links added yet.
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="flex flex-wrap items-center gap-4 border-t border-border bg-muted/30 px-6 py-2 text-xs text-muted-foreground">
+          <span>
+            Billable:{" "}
+            <span className="font-medium text-foreground">
+              {billable ? "Yes" : "No"}
+            </span>
+          </span>
+          <span>
+            Posting fee:{" "}
+            <span className="font-medium text-foreground">
+              {typeof fee === "number" && fee > 0
+                ? `$${(fee / 100).toLocaleString()}`
+                : "—"}
+            </span>
+          </span>
+          <span>
+            Billing:{" "}
+            <span className="font-medium text-foreground">
+              {triggered
+                ? `triggered ${format(new Date(triggered), "d MMM yyyy")}`
+                : billable
+                  ? "pending (auto at 10 candidates)"
+                  : "n/a"}
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
