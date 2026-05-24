@@ -252,7 +252,7 @@ export const createCandidate = createServerFn({ method: "POST" })
 export const listJobAdStages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ job_ad_id: z.string().uuid() }).parse(data),
+    z.object({ job_ad_id: z.string().min(1).max(64) }).parse(data),
   )
   .handler(async ({ context, data }) => {
     const { supabase } = context;
