@@ -17,12 +17,13 @@ import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
 import { Route as AuthenticatedPortalShortlistRouteImport } from './routes/_authenticated.portal.shortlist'
 import { Route as AuthenticatedPortalSettingsRouteImport } from './routes/_authenticated.portal.settings'
-import { Route as AuthenticatedPortalNewRouteImport } from './routes/_authenticated.portal.new'
 import { Route as AuthenticatedPortalCandidatesRouteImport } from './routes/_authenticated.portal.candidates'
 import { Route as AuthenticatedPortalActivityRouteImport } from './routes/_authenticated.portal.activity'
 import { Route as AuthenticatedPortalIdRouteImport } from './routes/_authenticated.portal.$id'
 import { Route as AuthenticatedPortalJobsIndexRouteImport } from './routes/_authenticated.portal.jobs.index'
 import { Route as AuthenticatedPortalJobsSlugRouteImport } from './routes/_authenticated.portal.jobs.$slug'
+import { Route as AuthenticatedPortalJobsSlugStagesRouteImport } from './routes/_authenticated.portal.jobs.$slug.stages'
+import { Route as AuthenticatedPortalJobsSlugAddCandidateRouteImport } from './routes/_authenticated.portal.jobs.$slug.add-candidate'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -66,11 +67,6 @@ const AuthenticatedPortalSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedPortalRoute,
   } as any)
-const AuthenticatedPortalNewRoute = AuthenticatedPortalNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => AuthenticatedPortalRoute,
-} as any)
 const AuthenticatedPortalCandidatesRoute =
   AuthenticatedPortalCandidatesRouteImport.update({
     id: '/candidates',
@@ -100,6 +96,18 @@ const AuthenticatedPortalJobsSlugRoute =
     path: '/jobs/$slug',
     getParentRoute: () => AuthenticatedPortalRoute,
   } as any)
+const AuthenticatedPortalJobsSlugStagesRoute =
+  AuthenticatedPortalJobsSlugStagesRouteImport.update({
+    id: '/stages',
+    path: '/stages',
+    getParentRoute: () => AuthenticatedPortalJobsSlugRoute,
+  } as any)
+const AuthenticatedPortalJobsSlugAddCandidateRoute =
+  AuthenticatedPortalJobsSlugAddCandidateRouteImport.update({
+    id: '/add-candidate',
+    path: '/add-candidate',
+    getParentRoute: () => AuthenticatedPortalJobsSlugRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,12 +117,13 @@ export interface FileRoutesByFullPath {
   '/portal/$id': typeof AuthenticatedPortalIdRoute
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
-  '/portal/new': typeof AuthenticatedPortalNewRoute
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal/': typeof AuthenticatedPortalIndexRoute
-  '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRoute
+  '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
+  '/portal/jobs/$slug/add-candidate': typeof AuthenticatedPortalJobsSlugAddCandidateRoute
+  '/portal/jobs/$slug/stages': typeof AuthenticatedPortalJobsSlugStagesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -123,12 +132,13 @@ export interface FileRoutesByTo {
   '/portal/$id': typeof AuthenticatedPortalIdRoute
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
-  '/portal/new': typeof AuthenticatedPortalNewRoute
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal': typeof AuthenticatedPortalIndexRoute
-  '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRoute
+  '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/portal/jobs': typeof AuthenticatedPortalJobsIndexRoute
+  '/portal/jobs/$slug/add-candidate': typeof AuthenticatedPortalJobsSlugAddCandidateRoute
+  '/portal/jobs/$slug/stages': typeof AuthenticatedPortalJobsSlugStagesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -140,12 +150,13 @@ export interface FileRoutesById {
   '/_authenticated/portal/$id': typeof AuthenticatedPortalIdRoute
   '/_authenticated/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/_authenticated/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
-  '/_authenticated/portal/new': typeof AuthenticatedPortalNewRoute
   '/_authenticated/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/_authenticated/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
-  '/_authenticated/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRoute
+  '/_authenticated/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/_authenticated/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
+  '/_authenticated/portal/jobs/$slug/add-candidate': typeof AuthenticatedPortalJobsSlugAddCandidateRoute
+  '/_authenticated/portal/jobs/$slug/stages': typeof AuthenticatedPortalJobsSlugStagesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,12 +168,13 @@ export interface FileRouteTypes {
     | '/portal/$id'
     | '/portal/activity'
     | '/portal/candidates'
-    | '/portal/new'
     | '/portal/settings'
     | '/portal/shortlist'
     | '/portal/'
     | '/portal/jobs/$slug'
     | '/portal/jobs/'
+    | '/portal/jobs/$slug/add-candidate'
+    | '/portal/jobs/$slug/stages'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -171,12 +183,13 @@ export interface FileRouteTypes {
     | '/portal/$id'
     | '/portal/activity'
     | '/portal/candidates'
-    | '/portal/new'
     | '/portal/settings'
     | '/portal/shortlist'
     | '/portal'
     | '/portal/jobs/$slug'
     | '/portal/jobs'
+    | '/portal/jobs/$slug/add-candidate'
+    | '/portal/jobs/$slug/stages'
   id:
     | '__root__'
     | '/'
@@ -187,12 +200,13 @@ export interface FileRouteTypes {
     | '/_authenticated/portal/$id'
     | '/_authenticated/portal/activity'
     | '/_authenticated/portal/candidates'
-    | '/_authenticated/portal/new'
     | '/_authenticated/portal/settings'
     | '/_authenticated/portal/shortlist'
     | '/_authenticated/portal/'
     | '/_authenticated/portal/jobs/$slug'
     | '/_authenticated/portal/jobs/'
+    | '/_authenticated/portal/jobs/$slug/add-candidate'
+    | '/_authenticated/portal/jobs/$slug/stages'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,13 +274,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortalSettingsRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
-    '/_authenticated/portal/new': {
-      id: '/_authenticated/portal/new'
-      path: '/new'
-      fullPath: '/portal/new'
-      preLoaderRoute: typeof AuthenticatedPortalNewRouteImport
-      parentRoute: typeof AuthenticatedPortalRoute
-    }
     '/_authenticated/portal/candidates': {
       id: '/_authenticated/portal/candidates'
       path: '/candidates'
@@ -302,18 +309,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortalJobsSlugRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
+    '/_authenticated/portal/jobs/$slug/stages': {
+      id: '/_authenticated/portal/jobs/$slug/stages'
+      path: '/stages'
+      fullPath: '/portal/jobs/$slug/stages'
+      preLoaderRoute: typeof AuthenticatedPortalJobsSlugStagesRouteImport
+      parentRoute: typeof AuthenticatedPortalJobsSlugRoute
+    }
+    '/_authenticated/portal/jobs/$slug/add-candidate': {
+      id: '/_authenticated/portal/jobs/$slug/add-candidate'
+      path: '/add-candidate'
+      fullPath: '/portal/jobs/$slug/add-candidate'
+      preLoaderRoute: typeof AuthenticatedPortalJobsSlugAddCandidateRouteImport
+      parentRoute: typeof AuthenticatedPortalJobsSlugRoute
+    }
   }
 }
+
+interface AuthenticatedPortalJobsSlugRouteChildren {
+  AuthenticatedPortalJobsSlugAddCandidateRoute: typeof AuthenticatedPortalJobsSlugAddCandidateRoute
+  AuthenticatedPortalJobsSlugStagesRoute: typeof AuthenticatedPortalJobsSlugStagesRoute
+}
+
+const AuthenticatedPortalJobsSlugRouteChildren: AuthenticatedPortalJobsSlugRouteChildren =
+  {
+    AuthenticatedPortalJobsSlugAddCandidateRoute:
+      AuthenticatedPortalJobsSlugAddCandidateRoute,
+    AuthenticatedPortalJobsSlugStagesRoute:
+      AuthenticatedPortalJobsSlugStagesRoute,
+  }
+
+const AuthenticatedPortalJobsSlugRouteWithChildren =
+  AuthenticatedPortalJobsSlugRoute._addFileChildren(
+    AuthenticatedPortalJobsSlugRouteChildren,
+  )
 
 interface AuthenticatedPortalRouteChildren {
   AuthenticatedPortalIdRoute: typeof AuthenticatedPortalIdRoute
   AuthenticatedPortalActivityRoute: typeof AuthenticatedPortalActivityRoute
   AuthenticatedPortalCandidatesRoute: typeof AuthenticatedPortalCandidatesRoute
-  AuthenticatedPortalNewRoute: typeof AuthenticatedPortalNewRoute
   AuthenticatedPortalSettingsRoute: typeof AuthenticatedPortalSettingsRoute
   AuthenticatedPortalShortlistRoute: typeof AuthenticatedPortalShortlistRoute
   AuthenticatedPortalIndexRoute: typeof AuthenticatedPortalIndexRoute
-  AuthenticatedPortalJobsSlugRoute: typeof AuthenticatedPortalJobsSlugRoute
+  AuthenticatedPortalJobsSlugRoute: typeof AuthenticatedPortalJobsSlugRouteWithChildren
   AuthenticatedPortalJobsIndexRoute: typeof AuthenticatedPortalJobsIndexRoute
 }
 
@@ -321,11 +359,11 @@ const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
   AuthenticatedPortalIdRoute: AuthenticatedPortalIdRoute,
   AuthenticatedPortalActivityRoute: AuthenticatedPortalActivityRoute,
   AuthenticatedPortalCandidatesRoute: AuthenticatedPortalCandidatesRoute,
-  AuthenticatedPortalNewRoute: AuthenticatedPortalNewRoute,
   AuthenticatedPortalSettingsRoute: AuthenticatedPortalSettingsRoute,
   AuthenticatedPortalShortlistRoute: AuthenticatedPortalShortlistRoute,
   AuthenticatedPortalIndexRoute: AuthenticatedPortalIndexRoute,
-  AuthenticatedPortalJobsSlugRoute: AuthenticatedPortalJobsSlugRoute,
+  AuthenticatedPortalJobsSlugRoute:
+    AuthenticatedPortalJobsSlugRouteWithChildren,
   AuthenticatedPortalJobsIndexRoute: AuthenticatedPortalJobsIndexRoute,
 }
 

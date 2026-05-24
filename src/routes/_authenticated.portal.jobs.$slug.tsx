@@ -7,7 +7,9 @@ import {
 import { useState } from "react";
 import {
   getJobAdBySlug,
+  getMyRoles,
   listCandidates,
+  listJobAdStages,
   updateCandidate,
 } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
@@ -30,11 +32,9 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FitBadge,
-  StatusBadge,
   FIT_LABELS,
-  STATUS_LABELS,
 } from "@/components/portal/Badges";
-import { ExternalLink, FileText, Linkedin, Plus, Search, Star } from "lucide-react";
+import { ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -51,11 +51,27 @@ const candidatesQuery = (jobAdId: string) =>
     queryFn: () => listCandidates({ data: { job_ad_id: jobAdId } }),
   });
 
+const stagesQuery = (jobAdId: string) =>
+  queryOptions({
+    queryKey: ["job-ad-stages", jobAdId],
+    queryFn: () => listJobAdStages({ data: { job_ad_id: jobAdId } }),
+  });
+
+const rolesQuery = queryOptions({
+  queryKey: ["my-roles"],
+  queryFn: () => getMyRoles(),
+});
+
+
 export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
   loader: async ({ context, params }) => {
     const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
     if (!ad) throw notFound();
-    await context.queryClient.ensureQueryData(candidatesQuery(ad.id));
+    await Promise.all([
+      context.queryClient.ensureQueryData(candidatesQuery(ad.id)),
+      context.queryClient.ensureQueryData(stagesQuery(ad.id)),
+      context.queryClient.ensureQueryData(rolesQuery),
+    ]);
   },
   component: JobAdDetailPage,
   notFoundComponent: () => (
@@ -68,6 +84,7 @@ export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
   ),
 });
 
+
 function JobAdDetailPage() {
   const { slug } = Route.useParams();
   const { data: adData } = useSuspenseQuery(adQuery(slug));
@@ -75,24 +92,36 @@ function JobAdDetailPage() {
   const client = adData.client;
   const stats = adData.stats!;
   const { data: candData } = useSuspenseQuery(candidatesQuery(ad.id));
+  const { data: stagesData } = useSuspenseQuery(stagesQuery(ad.id));
+  const { data: rolesData } = useSuspenseQuery(rolesQuery);
+  const isAdmin = rolesData.roles.includes("admin");
+  const stages = stagesData.stages;
+  const stageById = new Map(stages.map((s) => [s.id, s]));
   const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [tab, setTab] = useState<"inbound" | "sourced">("inbound");
   const [search, setSearch] = useState("");
   const [fit, setFit] = useState<string>("all");
-  const [status, setStatus] = useState<string>("all");
+  const [stageFilter, setStageFilter] = useState<string>("all");
   const [shortlist, setShortlist] = useState<string>("all");
 
   const all = candData.candidates;
   const inboundCount = all.filter((c) => c.source === "public_form").length;
   const sourcedCount = all.filter((c) => c.source === "manual").length;
 
+  // Resolve a candidate's stage_id, falling back to legacy_status mapping if missing
+  const resolveStageId = (c: typeof all[number]): string | null => {
+    if (c.stage_id) return c.stage_id;
+    const match = stages.find((s) => s.legacy_status === c.pipeline_status);
+    return match?.id ?? null;
+  };
+
   const rows = all.filter((c) => {
     const wantSource = tab === "inbound" ? "public_form" : "manual";
     if (c.source !== wantSource) return false;
     if (fit !== "all" && c.fit !== fit) return false;
-    if (status !== "all" && c.pipeline_status !== status) return false;
+    if (stageFilter !== "all" && resolveStageId(c) !== stageFilter) return false;
     if (shortlist === "on" && !c.shortlisted) return false;
     if (shortlist === "off" && c.shortlisted) return false;
     if (search) {
@@ -126,14 +155,15 @@ function JobAdDetailPage() {
     }
   }
 
-  async function changeStatus(id: string, v: string) {
+  async function changeStage(id: string, stageId: string) {
     try {
-      await updateCandidate({ data: { id, patch: { pipeline_status: v as any } } });
+      await updateCandidate({ data: { id, patch: { stage_id: stageId } } });
       qc.invalidateQueries({ queryKey: ["candidates"] });
     } catch (e: any) {
       toast.error(e?.message || "Failed");
     }
   }
+
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
@@ -192,8 +222,15 @@ function JobAdDetailPage() {
                 <FileText className="h-4 w-4" /> View JD
               </a>
             )}
+            {isAdmin && (
+              <Button asChild variant="outline">
+                <Link to="/portal/jobs/$slug/stages" params={{ slug }}>
+                  <Settings2 className="mr-1 h-4 w-4" /> Stages
+                </Link>
+              </Button>
+            )}
             <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link to="/portal/new">
+              <Link to="/portal/jobs/$slug/add-candidate" params={{ slug }}>
                 <Plus className="mr-1 h-4 w-4" /> Add candidate
               </Link>
             </Button>
@@ -229,15 +266,15 @@ function JobAdDetailPage() {
             className="rounded-full pl-9"
           />
         </div>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={stageFilter} onValueChange={setStageFilter}>
           <SelectTrigger className="w-[200px] rounded-full">
             <SelectValue placeholder="Stage" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All stages</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>
-                {v}
+            {stages.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -317,21 +354,29 @@ function JobAdDetailPage() {
                     {c.years_of_experience ?? "—"}
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={c.pipeline_status}
-                      onValueChange={(v) => changeStatus(c.id, v)}
-                    >
-                      <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
-                        <StatusBadge value={c.pipeline_status} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>
-                            {v}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(() => {
+                      const sid = resolveStageId(c);
+                      const cur = sid ? stageById.get(sid) : null;
+                      return (
+                        <Select
+                          value={sid ?? ""}
+                          onValueChange={(v) => changeStage(c.id, v)}
+                        >
+                          <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                              {cur?.label ?? "—"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {stages.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <FitBadge value={c.fit} />
