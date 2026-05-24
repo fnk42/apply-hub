@@ -3,6 +3,114 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+// ---- listLiveJobAds (PUBLIC) ----
+export const listLiveJobAds = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { data, error } = await supabaseAdmin
+      .from("job_ads")
+      .select("id, slug, title, start_date, client_id")
+      .eq("status", "live")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const clientIds = Array.from(new Set((data ?? []).map((a) => a.client_id)));
+    let nameById = new Map<string, string>();
+    if (clientIds.length) {
+      const { data: cs } = await supabaseAdmin
+        .from("clients")
+        .select("id, name")
+        .in("id", clientIds);
+      nameById = new Map((cs ?? []).map((c) => [c.id, c.name]));
+    }
+    return {
+      ads: (data ?? []).map((a) => ({
+        id: a.id,
+        slug: a.slug,
+        title: a.title,
+        start_date: a.start_date,
+        client_name: nameById.get(a.client_id) ?? null,
+      })),
+    };
+  },
+);
+
+// ---- getPublicJobAd (PUBLIC, by slug, only if live) ----
+export const getPublicJobAd = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ slug: z.string().min(1).max(120) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { data: ad, error } = await supabaseAdmin
+      .from("job_ads")
+      .select("id, slug, title, status, start_date, jd_url, client_id")
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!ad) return { ad: null, client_name: null };
+    const { data: c } = await supabaseAdmin
+      .from("clients")
+      .select("name")
+      .eq("id", ad.client_id)
+      .maybeSingle();
+    return { ad, client_name: c?.name ?? null };
+  });
+
+// ---- submitApplication (PUBLIC) ----
+const submitInput = z.object({
+  job_ad_id: z.string().uuid(),
+  full_name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(255),
+  phone: z.string().trim().min(3).max(40),
+  linkedin_url: z.string().trim().min(1).max(255),
+  current_company: z.string().trim().max(160).optional().or(z.literal("")),
+  years_of_experience: z.number().int().min(0).max(60),
+  cover_note: z.string().trim().max(2000).optional().or(z.literal("")),
+  resume_path: z.string().trim().min(1).max(500),
+  screening_answers: z.record(z.string(), z.any()).default({}),
+  honeypot: z.string().max(0).optional().or(z.literal("")),
+});
+
+export const submitApplication = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => submitInput.parse(data))
+  .handler(async ({ data }) => {
+    if (data.honeypot) return { ok: true }; // silent
+    // Verify job ad is live
+    const { data: ad, error: adErr } = await supabaseAdmin
+      .from("job_ads")
+      .select("id, status")
+      .eq("id", data.job_ad_id)
+      .maybeSingle();
+    if (adErr) throw new Error(adErr.message);
+    if (!ad || ad.status !== "live") {
+      throw new Error("This role is no longer accepting applications.");
+    }
+    const { data: firstStage } = await supabaseAdmin
+      .from("job_ad_stages")
+      .select("id, legacy_status")
+      .eq("job_ad_id", ad.id)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const { error } = await supabaseAdmin.from("applications").insert({
+      source: "public_form",
+      job_ad_id: ad.id,
+      stage_id: firstStage?.id ?? null,
+      pipeline_status: firstStage?.legacy_status ?? "sourced",
+      full_name: data.full_name,
+      email: data.email,
+      phone: data.phone,
+      linkedin_url: data.linkedin_url,
+      current_company: data.current_company || null,
+      years_of_experience: data.years_of_experience,
+      resume_url: data.resume_path,
+      cover_note: data.cover_note || null,
+      screening_answers: data.screening_answers ?? {},
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+
 const FIT_VALUES = ["unrated", "weak", "medium", "strong"] as const;
 const STATUS_VALUES = [
   "sourced",
@@ -66,14 +174,15 @@ export const listCandidates = createServerFn({ method: "POST" })
 export const getPortalShell = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
-    const [adsRes, settingsRes, countsRes] = await Promise.all([
+    const { supabase, userId } = context;
+    const [adsRes, settingsRes, countsRes, rolesRes] = await Promise.all([
       supabase
         .from("job_ads")
         .select("id, slug, title, status")
         .order("created_at", { ascending: false }),
       supabase.from("app_settings").select("key, value").eq("key", "app_name").maybeSingle(),
       supabase.from("applications").select("job_ad_id"),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     if (adsRes.error) throw new Error(adsRes.error.message);
     const counts = new Map<string, number>();
@@ -91,7 +200,77 @@ export const getPortalShell = createServerFn({ method: "GET" })
       (settingsRes.data?.value as any)?.name ??
       (typeof settingsRes.data?.value === "string" ? settingsRes.data.value : null) ??
       "Project Dashboard";
-    return { appName, ads };
+    const roles = (rolesRes.data ?? []).map((r) => r.role as string);
+    return { appName, ads, roles };
+  });
+
+// ---- inviteClient (admin) ----
+export const inviteClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        client_id: z.string().uuid(),
+        email: z.string().trim().email().max(255),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Only admins can invite clients.");
+
+    const { data: invited, error: invErr } =
+      await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
+    let authUserId = invited?.user?.id ?? null;
+    if (invErr) {
+      const msg = invErr.message?.toLowerCase() ?? "";
+      if (msg.includes("already") || msg.includes("registered")) {
+        const { data: list } = await supabaseAdmin.auth.admin.listUsers();
+        const found = list?.users?.find(
+          (u) => u.email?.toLowerCase() === data.email.toLowerCase(),
+        );
+        if (!found) throw new Error(invErr.message);
+        authUserId = found.id;
+      } else {
+        throw new Error(invErr.message);
+      }
+    }
+    if (!authUserId) throw new Error("Failed to create user.");
+
+    const { error: linkErr } = await supabaseAdmin
+      .from("clients")
+      .update({ auth_user_id: authUserId, contact_email: data.email })
+      .eq("id", data.client_id);
+    if (linkErr) throw new Error(linkErr.message);
+
+    const { error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .upsert(
+        { user_id: authUserId, role: "client" },
+        { onConflict: "user_id,role" },
+      );
+    if (roleErr) throw new Error(roleErr.message);
+
+    return { ok: true, user_id: authUserId };
+  });
+
+// ---- listClients (admin) ----
+export const listClients = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await supabase
+      .from("clients")
+      .select("id, name, contact_name, contact_email, auth_user_id")
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { clients: data ?? [] };
   });
 
 // ---- getJobAdBySlug ----

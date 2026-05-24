@@ -10,7 +10,8 @@ export const Route = createFileRoute("/_authenticated/portal")({
     const ok =
       roles.includes("admin") ||
       roles.includes("recruiter") ||
-      roles.includes("member");
+      roles.includes("member") ||
+      roles.includes("client");
     if (!ok) throw redirect({ to: "/unauthorized" });
   },
   component: PortalLayout,
