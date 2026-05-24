@@ -56,7 +56,7 @@ export const getPublicJobAd = createServerFn({ method: "POST" })
 
 // ---- submitApplication (PUBLIC) ----
 const submitInput = z.object({
-  job_ad_id: z.string().uuid(),
+  job_ad_id: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, "Invalid UUID"),
   full_name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(255),
   phone: z.string().trim().min(3).max(40),
