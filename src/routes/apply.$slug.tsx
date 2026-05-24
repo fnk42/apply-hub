@@ -117,7 +117,7 @@ function ApplyPage() {
     );
   }
 
-  if (ad.status !== "live") {
+  if (ad.status === "closed") {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <h1 className="font-serif text-4xl">{ad.title}</h1>
