@@ -65,11 +65,18 @@ function ClientsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <h1 className="font-serif text-4xl tracking-tight">Clients</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Invite a client to log in. They&apos;ll see only their own job ads and
-        candidates.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-4xl tracking-tight">Clients</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Invite a client to log in. They&apos;ll see only their own job ads
+            and candidates.
+          </p>
+        </div>
+        <NewClientDialog onCreated={() => qc.invalidateQueries({ queryKey: ["admin-clients"] })} />
+      </div>
+
+
 
       <div className="mt-8 rounded-lg border border-border bg-card">
         <Table>
