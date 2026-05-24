@@ -8,10 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+function normalizeRedirect(value: string | undefined) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/portal";
+  return value;
+}
+
+function buildLoginCallback(destination: string) {
+  const params = new URLSearchParams({ redirect: destination });
+  return `${window.location.origin}/login?${params.toString()}`;
+}
+
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: `Sign in — ${company.name}` }] }),
   validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    redirect: normalizeRedirect(
+      typeof search.redirect === "string" ? search.redirect : undefined,
+    ),
   }),
   component: LoginPage,
 });
@@ -19,18 +31,30 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   
   const { redirect: redirectTo } = Route.useSearch();
-  const destination = redirectTo || "/portal";
+  const destination = redirectTo;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
+    let cancelled = false;
+    async function forwardWhenAuthenticated() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
+      const { data } = await supabase.auth.getUser();
+      if (!cancelled && data.user) {
         window.location.href = destination;
       }
-    });
+
+    }
+    forwardWhenAuthenticated();
+    return () => {
+      cancelled = true;
+    };
   }, [destination]);
 
 
@@ -43,7 +67,7 @@ function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}${destination}` },
+          options: { emailRedirectTo: buildLoginCallback(destination) },
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
@@ -66,7 +90,7 @@ function LoginPage() {
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}${destination}`,
+        redirect_uri: buildLoginCallback(destination),
       });
       if (result.error) throw result.error;
       if (!result.redirected) window.location.href = destination;
