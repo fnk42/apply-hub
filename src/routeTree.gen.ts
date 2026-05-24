@@ -21,6 +21,8 @@ import { Route as AuthenticatedPortalNewRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPortalCandidatesRouteImport } from './routes/_authenticated.portal.candidates'
 import { Route as AuthenticatedPortalActivityRouteImport } from './routes/_authenticated.portal.activity'
 import { Route as AuthenticatedPortalIdRouteImport } from './routes/_authenticated.portal.$id'
+import { Route as AuthenticatedPortalJobsIndexRouteImport } from './routes/_authenticated.portal.jobs.index'
+import { Route as AuthenticatedPortalJobsSlugRouteImport } from './routes/_authenticated.portal.jobs.$slug'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -86,6 +88,18 @@ const AuthenticatedPortalIdRoute = AuthenticatedPortalIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedPortalRoute,
 } as any)
+const AuthenticatedPortalJobsIndexRoute =
+  AuthenticatedPortalJobsIndexRouteImport.update({
+    id: '/jobs/',
+    path: '/jobs/',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
+const AuthenticatedPortalJobsSlugRoute =
+  AuthenticatedPortalJobsSlugRouteImport.update({
+    id: '/jobs/$slug',
+    path: '/jobs/$slug',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -99,6 +113,8 @@ export interface FileRoutesByFullPath {
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal/': typeof AuthenticatedPortalIndexRoute
+  '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRoute
+  '/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,6 +127,8 @@ export interface FileRoutesByTo {
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal': typeof AuthenticatedPortalIndexRoute
+  '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRoute
+  '/portal/jobs': typeof AuthenticatedPortalJobsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,6 +144,8 @@ export interface FileRoutesById {
   '/_authenticated/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/_authenticated/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
+  '/_authenticated/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRoute
+  '/_authenticated/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +161,8 @@ export interface FileRouteTypes {
     | '/portal/settings'
     | '/portal/shortlist'
     | '/portal/'
+    | '/portal/jobs/$slug'
+    | '/portal/jobs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,6 +175,8 @@ export interface FileRouteTypes {
     | '/portal/settings'
     | '/portal/shortlist'
     | '/portal'
+    | '/portal/jobs/$slug'
+    | '/portal/jobs'
   id:
     | '__root__'
     | '/'
@@ -167,6 +191,8 @@ export interface FileRouteTypes {
     | '/_authenticated/portal/settings'
     | '/_authenticated/portal/shortlist'
     | '/_authenticated/portal/'
+    | '/_authenticated/portal/jobs/$slug'
+    | '/_authenticated/portal/jobs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -262,6 +288,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortalIdRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
+    '/_authenticated/portal/jobs/': {
+      id: '/_authenticated/portal/jobs/'
+      path: '/jobs'
+      fullPath: '/portal/jobs/'
+      preLoaderRoute: typeof AuthenticatedPortalJobsIndexRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
+    '/_authenticated/portal/jobs/$slug': {
+      id: '/_authenticated/portal/jobs/$slug'
+      path: '/jobs/$slug'
+      fullPath: '/portal/jobs/$slug'
+      preLoaderRoute: typeof AuthenticatedPortalJobsSlugRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
   }
 }
 
@@ -273,6 +313,8 @@ interface AuthenticatedPortalRouteChildren {
   AuthenticatedPortalSettingsRoute: typeof AuthenticatedPortalSettingsRoute
   AuthenticatedPortalShortlistRoute: typeof AuthenticatedPortalShortlistRoute
   AuthenticatedPortalIndexRoute: typeof AuthenticatedPortalIndexRoute
+  AuthenticatedPortalJobsSlugRoute: typeof AuthenticatedPortalJobsSlugRoute
+  AuthenticatedPortalJobsIndexRoute: typeof AuthenticatedPortalJobsIndexRoute
 }
 
 const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
@@ -283,6 +325,8 @@ const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
   AuthenticatedPortalSettingsRoute: AuthenticatedPortalSettingsRoute,
   AuthenticatedPortalShortlistRoute: AuthenticatedPortalShortlistRoute,
   AuthenticatedPortalIndexRoute: AuthenticatedPortalIndexRoute,
+  AuthenticatedPortalJobsSlugRoute: AuthenticatedPortalJobsSlugRoute,
+  AuthenticatedPortalJobsIndexRoute: AuthenticatedPortalJobsIndexRoute,
 }
 
 const AuthenticatedPortalRouteWithChildren =
