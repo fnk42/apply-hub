@@ -32,6 +32,7 @@ function PortalLayout() {
           <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-card px-6">
             <SidebarTrigger />
             <div className="flex-1" />
+            <NotificationBell />
             <span className="text-sm text-muted-foreground">{appName}</span>
           </header>
           <main className="flex-1">
