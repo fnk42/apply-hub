@@ -34,12 +34,6 @@ function LoginPage() {
   }, [destination]);
 
 
-function LoginPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [loading, setLoading] = useState(false);
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
