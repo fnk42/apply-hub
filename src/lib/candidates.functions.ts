@@ -169,20 +169,25 @@ export const updateCandidate = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => updateInput.parse(data))
   .handler(async ({ context, data }) => {
     const { supabase } = context;
-    const patch: Record<string, unknown> = { ...data.patch };
+    const patch: {
+      fit?: typeof FIT_VALUES[number];
+      pipeline_status?: typeof STATUS_VALUES[number];
+      stage_id?: string | null;
+      recruiter_notes?: string | null;
+      current_company?: string | null;
+      current_title?: string | null;
+      years_of_experience?: number | null;
+      shortlisted?: boolean;
+    } = { ...data.patch };
     // Keep pipeline_status in sync when stage_id changes (legacy compat for now)
-    if (data.patch.stage_id !== undefined) {
-      if (data.patch.stage_id === null) {
-        // leave pipeline_status as-is
-      } else {
-        const { data: stage } = await supabase
-          .from("job_ad_stages")
-          .select("legacy_status")
-          .eq("id", data.patch.stage_id)
-          .maybeSingle();
-        if (stage?.legacy_status) {
-          patch.pipeline_status = stage.legacy_status;
-        }
+    if (data.patch.stage_id !== undefined && data.patch.stage_id !== null) {
+      const { data: stage } = await supabase
+        .from("job_ad_stages")
+        .select("legacy_status")
+        .eq("id", data.patch.stage_id)
+        .maybeSingle();
+      if (stage?.legacy_status) {
+        patch.pipeline_status = stage.legacy_status as typeof STATUS_VALUES[number];
       }
     }
     const { error } = await supabase
@@ -192,6 +197,7 @@ export const updateCandidate = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 // ---- createCandidate (manual add, scoped to a job ad) ----
 const createInput = z.object({
