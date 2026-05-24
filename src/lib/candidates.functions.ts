@@ -31,7 +31,7 @@ const listInput = z.object({
   pipeline_status: z.enum(STATUS_VALUES).optional(),
   source: z.enum(["inbound", "sourced"]).optional(),
   shortlisted: z.boolean().optional(),
-  job_ad_id: z.string().uuid().optional(),
+  job_ad_id: z.string().min(1).max(64).optional(),
 });
 
 export const listCandidates = createServerFn({ method: "POST" })
