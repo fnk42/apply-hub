@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useState } from "react";
-import { createCandidate } from "@/lib/candidates.functions";
+import { createCandidate, getJobAdBySlug } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,32 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/portal/new")({
-  component: NewCandidatePage,
+const adQuery = (slug: string) =>
+  queryOptions({
+    queryKey: ["job-ad", slug],
+    queryFn: () => getJobAdBySlug({ data: { slug } }),
+  });
+
+export const Route = createFileRoute("/_authenticated/portal/jobs/$slug/add-candidate")({
+  loader: async ({ context, params }) => {
+    const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
+    if (!ad) throw notFound();
+  },
+  component: AddCandidatePage,
+  notFoundComponent: () => (
+    <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+      <h1 className="font-serif text-3xl">Job ad not found</h1>
+      <Link to="/portal/jobs" className="mt-4 inline-block text-primary hover:underline">
+        Back to all ads
+      </Link>
+    </div>
+  ),
 });
 
-function NewCandidatePage() {
+function AddCandidatePage() {
+  const { slug } = Route.useParams();
+  const { data: adData } = useSuspenseQuery(adQuery(slug));
+  const ad = adData.ad!;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
@@ -33,16 +54,19 @@ function NewCandidatePage() {
     try {
       const { id } = await createCandidate({
         data: {
+          job_ad_id: ad.id,
           full_name: String(form.get("full_name") || "").trim(),
           email: String(form.get("email") || "").trim(),
           phone: String(form.get("phone") || "").trim(),
           linkedin_url: String(form.get("linkedin_url") || "").trim(),
           current_company: companyNA ? "" : companyVal.trim(),
+          current_title: String(form.get("current_title") || "").trim(),
           years_of_experience: yoe,
           cover_note: String(form.get("cover_note") || "").trim(),
         },
       });
       qc.invalidateQueries({ queryKey: ["candidates"] });
+      qc.invalidateQueries({ queryKey: ["job-ad", slug] });
       toast.success("Candidate added");
       navigate({ to: "/portal/$id", params: { id } });
     } catch (err: any) {
@@ -54,12 +78,17 @@ function NewCandidatePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <Link to="/portal/candidates" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to candidates
+      <Link
+        to="/portal/jobs/$slug"
+        params={{ slug }}
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Back to {ad.title}
       </Link>
       <h1 className="mt-3 font-serif text-3xl tracking-tight">Add candidate</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Manually add someone you've sourced. Only name and email are required.
+        Manually add someone you've sourced for <span className="font-medium">{ad.title}</span>.
+        Only name and email are required.
       </p>
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         <Field id="full_name" label="Full name *">
@@ -96,6 +125,9 @@ function NewCandidatePage() {
             Not currently employed / N/A
           </label>
         </Field>
+        <Field id="current_title" label="Current title">
+          <Input id="current_title" name="current_title" maxLength={160} />
+        </Field>
         <Field id="years_of_experience" label="Years of experience">
           <Input
             id="years_of_experience"
@@ -118,7 +150,9 @@ function NewCandidatePage() {
             {submitting ? "Adding…" : "Add candidate"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link to="/portal/candidates">Cancel</Link>
+            <Link to="/portal/jobs/$slug" params={{ slug }}>
+              Cancel
+            </Link>
           </Button>
         </div>
       </form>
