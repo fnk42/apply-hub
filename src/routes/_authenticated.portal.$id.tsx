@@ -4,8 +4,8 @@ import { useState } from "react";
 import {
   getCandidate,
   updateCandidate,
-  getResumeSignedUrl,
 } from "@/lib/candidates.functions";
+import { openResumeInNewTab } from "@/lib/open-resume";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
