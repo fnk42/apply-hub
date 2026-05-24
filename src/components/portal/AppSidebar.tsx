@@ -55,9 +55,7 @@ export function AppSidebar() {
   const ads = data?.ads ?? [];
   const roles = data?.roles ?? [];
   const isInternal =
-    roles.includes("admin") ||
-    roles.includes("recruiter") ||
-    roles.includes("member");
+    roles.includes("admin") || roles.includes("member");
   const isAdmin = roles.includes("admin");
 
   return (
