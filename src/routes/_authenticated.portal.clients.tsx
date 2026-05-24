@@ -2,13 +2,28 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getMyRoles, listClients, inviteClient } from "@/lib/candidates.functions";
+import {
+  getMyRoles,
+  listClients,
+  inviteClient,
+  createClient,
+} from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Plus } from "lucide-react";
+
 
 const clientsQuery = queryOptions({
   queryKey: ["admin-clients"],
@@ -50,11 +65,18 @@ function ClientsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <h1 className="font-serif text-4xl tracking-tight">Clients</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Invite a client to log in. They&apos;ll see only their own job ads and
-        candidates.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-4xl tracking-tight">Clients</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Invite a client to log in. They&apos;ll see only their own job ads
+            and candidates.
+          </p>
+        </div>
+        <NewClientDialog onCreated={() => qc.invalidateQueries({ queryKey: ["admin-clients"] })} />
+      </div>
+
+
 
       <div className="mt-8 rounded-lg border border-border bg-card">
         <Table>
@@ -107,3 +129,97 @@ function ClientsPage() {
     </div>
   );
 }
+
+function NewClientDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error("Client name is required");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createClient({
+        data: {
+          name: name.trim(),
+          contact_name: contactName.trim() || null,
+          contact_email: contactEmail.trim() || null,
+        },
+      });
+      toast.success("Client added");
+      setName("");
+      setContactName("");
+      setContactEmail("");
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-1 h-4 w-4" /> New client
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a client</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="client-name">Client name</Label>
+            <Input
+              id="client-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Acme Corp"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="client-contact-name">Contact name (optional)</Label>
+            <Input
+              id="client-contact-name"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder="Jane Doe"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="client-contact-email">Contact email (optional)</Label>
+            <Input
+              id="client-contact-email"
+              type="email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="jane@acme.com"
+            />
+            <p className="text-xs text-muted-foreground">
+              You can invite this email to the portal afterwards.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Adding…" : "Add client"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

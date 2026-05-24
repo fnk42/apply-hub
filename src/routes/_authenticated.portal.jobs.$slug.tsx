@@ -34,7 +34,7 @@ import {
   FitBadge,
   FIT_LABELS,
 } from "@/components/portal/Badges";
-import { ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
+import { Copy, ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -238,7 +238,10 @@ function JobAdDetailPage() {
         </div>
       </div>
 
+      {ad.status === "live" && <ShareLinkCard slug={ad.slug} />}
+
       {/* Candidates */}
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-6">
         <TabsList>
           <TabsTrigger value="inbound">
@@ -434,3 +437,39 @@ function NameCell({
   }
   return <span className="font-medium">{name}</span>;
 }
+
+function ShareLinkCard({ slug }: { slug: string }) {
+  const url =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/apply/${slug}`
+      : `/apply/${slug}`;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Copy failed");
+    }
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Public apply link
+        </span>
+        <code className="truncate text-sm">{url}</code>
+      </div>
+      <Button variant="outline" size="sm" onClick={copy}>
+        <Copy className="mr-1 h-4 w-4" /> Copy
+      </Button>
+      <Button asChild variant="outline" size="sm">
+        <a href={url} target="_blank" rel="noreferrer">
+          <ExternalLink className="mr-1 h-4 w-4" /> Open
+        </a>
+      </Button>
+    </div>
+  );
+}
+
