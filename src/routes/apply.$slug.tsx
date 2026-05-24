@@ -4,7 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getPublicJobAd, submitApplication } from "@/lib/candidates.functions";
+import { getPublicJobAd, submitApplication, uploadPublicResume } from "@/lib/candidates.functions";
 import { company } from "@/config/company";
 import { screeningQuestions } from "@/config/screening";
 import { Button } from "@/components/ui/button";
