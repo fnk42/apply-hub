@@ -140,6 +140,18 @@ function ClientsPage() {
                     </Button>
                   )}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    disabled={busy === c.id}
+                    onClick={() => handleDelete(c.id, c.name)}
+                    aria-label="Delete client"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+
               </TableRow>
             ))}
           </TableBody>
