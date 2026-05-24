@@ -266,15 +266,15 @@ function JobAdDetailPage() {
             className="rounded-full pl-9"
           />
         </div>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={stageFilter} onValueChange={setStageFilter}>
           <SelectTrigger className="w-[200px] rounded-full">
             <SelectValue placeholder="Stage" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All stages</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>
-                {v}
+            {stages.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.label}
               </SelectItem>
             ))}
           </SelectContent>
