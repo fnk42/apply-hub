@@ -39,7 +39,7 @@ const createInput = z.object({
   roles_count: z.number().int().min(1).max(50).default(1),
   start_date: z.string().optional().or(z.literal("")),
   is_billable: z.boolean().default(true),
-  posting_fee_cents: z.number().int().min(0).max(100_000_000).optional().nullable(),
+  posting_fee: z.number().int().min(0).max(100_000_000).optional().nullable(),
   status: z.enum(["pending_authorization", "live", "draft"]).default("pending_authorization"),
 });
 
@@ -78,8 +78,8 @@ export const createJobAd = createServerFn({ method: "POST" })
       status: data.status,
       created_by: userId,
     };
-    if (data.posting_fee_cents != null) {
-      insert.posting_fee_cents = data.posting_fee_cents;
+    if (data.posting_fee != null) {
+      insert.posting_fee = data.posting_fee;
     }
     if (data.status === "live") {
       insert.authorized_by = userId;
