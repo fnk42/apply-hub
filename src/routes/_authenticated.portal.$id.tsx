@@ -48,9 +48,31 @@ function CandidateDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQuery(candidateQuery(id));
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const a = data.application;
   const [notes, setNotes] = useState<string>(a.recruiter_notes ?? "");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const { data: shell } = useQuery({
+    queryKey: ["portal-shell"],
+    queryFn: () => getPortalShell(),
+  });
+  const isAdmin = (shell?.roles ?? []).includes("admin");
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteCandidate({ data: { id } });
+      toast.success("Candidate deleted");
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+      qc.invalidateQueries({ queryKey: ["portal-shell"] });
+      navigate({ to: "/portal/jobs" });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete");
+      setDeleting(false);
+    }
+  }
 
   async function patch(p: Record<string, any>) {
     await updateCandidate({ data: { id, patch: p } });
