@@ -103,6 +103,8 @@ function ClientsPage() {
               <TableHead>Contact</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="w-[180px] text-right">Access</TableHead>
+              <TableHead className="w-[60px]"></TableHead>
+
             </TableRow>
           </TableHeader>
           <TableBody>
