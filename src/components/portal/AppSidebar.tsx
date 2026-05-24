@@ -6,6 +6,7 @@ import {
   Activity,
   Settings as SettingsIcon,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
