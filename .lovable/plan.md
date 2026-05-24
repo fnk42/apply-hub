@@ -1,21 +1,21 @@
 ## Plan
 
-1. **Stop hard-reloading after successful sign-in**
-   - Replace `window.location.href = destination` in `src/routes/login.tsx` with TanStack Router client navigation.
-   - This keeps the newly stored browser session available while navigating to `/portal`.
+1. **Restore the recommended Google OAuth redirect**
+   - Change Google sign-in to use `redirect_uri: window.location.origin`, which is the managed Lovable Cloud OAuth default.
+   - Store the intended post-login destination (`/portal` or the `redirect` query param) in browser storage before starting Google sign-in.
 
-2. **Use the same client navigation for already-signed-in users**
-   - When `/login` detects an existing valid session, navigate in-app instead of forcing a document reload.
-   - This prevents the protected route from being checked during SSR without access to the browser session.
+2. **Forward after OAuth using the stored destination**
+   - When `/login` loads and detects a valid session, read the stored destination and navigate there client-side.
+   - Keep the current client-side navigation fix so the app does not full-reload back into `/login`.
 
-3. **Keep OAuth callback behavior from the prior fix**
-   - Continue returning Google OAuth to `/login?redirect=/portal` first.
-   - After `/login` confirms the session, forward via client navigation.
+3. **Handle blocked/embedded popup behavior better**
+   - If Google sign-in returns an error such as popup blocked/cancelled, reset the button and show a clear toast instead of leaving the user thinking nothing happened.
+   - Keep the button loading only while the auth call is actually pending.
 
-4. **Verify the login page and routing behavior**
-   - Confirm `/login?redirect=/portal` renders.
-   - Check browser console/dev logs for route or dynamic import errors after the change.
+4. **Verify in preview**
+   - Open `/login?redirect=/portal`, click “Continue with Google,” and confirm it reaches the Google account screen in the browser tool.
+   - Check console/network logs for auth or dynamic import errors.
 
-## Technical details
+## Note
 
-The current code signs the user in successfully, then uses `window.location.href` to open `/portal` as a brand-new page load. On that first server-rendered request, the server cannot read the browser-only auth session yet, so `_authenticated` sends the user back to `/login`. Client-side navigation avoids that SSR/session mismatch.
+I tested the current button in a top-level preview and it does reach Google. If it still does nothing inside the embedded Lovable preview in incognito, that can be a preview popup restriction; testing from the full preview URL or a published URL is the reliable confirmation path.

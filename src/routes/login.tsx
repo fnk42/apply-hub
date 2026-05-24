@@ -8,15 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-function normalizeRedirect(value: string | undefined) {
+function normalizeRedirect(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/portal";
   return value;
 }
 
-function buildLoginCallback(destination: string) {
-  const params = new URLSearchParams({ redirect: destination });
-  return `${window.location.origin}/login?${params.toString()}`;
-}
+const POST_LOGIN_KEY = "pipit:post_login_redirect";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: `Sign in — ${company.name}` }] }),
@@ -51,18 +48,23 @@ function LoginPage() {
       if (!session || cancelled) return;
 
       const { data } = await supabase.auth.getUser();
-      if (!cancelled && data.user) {
-        goToDestination();
-      }
+      if (cancelled || !data.user) return;
 
+      let stored: string | null = null;
+      try {
+        stored = sessionStorage.getItem(POST_LOGIN_KEY);
+        if (stored) sessionStorage.removeItem(POST_LOGIN_KEY);
+      } catch {
+        stored = null;
+      }
+      const target = normalizeRedirect(stored ?? destination);
+      void navigate({ to: target as any, replace: true });
     }
     forwardWhenAuthenticated();
     return () => {
       cancelled = true;
     };
-  }, [goToDestination]);
-
-
+  }, [destination, navigate]);
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +74,7 @@ function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: buildLoginCallback(destination) },
+          options: { emailRedirectTo: `${window.location.origin}/login` },
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
@@ -94,8 +96,13 @@ function LoginPage() {
   async function handleGoogle() {
     setLoading(true);
     try {
+      try {
+        sessionStorage.setItem(POST_LOGIN_KEY, destination);
+      } catch {
+        // sessionStorage unavailable; we'll fall back to the URL's redirect param
+      }
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: buildLoginCallback(destination),
+        redirect_uri: window.location.origin,
       });
       if (result.error) throw result.error;
       if (!result.redirected) goToDestination();
