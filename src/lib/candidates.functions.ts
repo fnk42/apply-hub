@@ -273,6 +273,49 @@ export const listClients = createServerFn({ method: "GET" })
     return { clients: data ?? [] };
   });
 
+// ---- createClient (admin) ----
+export const createClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        name: z.string().trim().min(1).max(255),
+        contact_name: z.string().trim().max(255).optional().nullable(),
+        contact_email: z
+          .string()
+          .trim()
+          .email()
+          .max(255)
+          .optional()
+          .nullable()
+          .or(z.literal("")),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Only admins can add clients.");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("clients")
+      .insert({
+        name: data.name,
+        contact_name: data.contact_name || null,
+        contact_email: data.contact_email ? data.contact_email : null,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+
 // ---- getJobAdBySlug ----
 export const getJobAdBySlug = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
