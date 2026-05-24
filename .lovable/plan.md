@@ -1,80 +1,59 @@
+# Phase 5 + Phase 6 Plan
 
-## Goal
-
-A live job ad needs two things working end-to-end:
-1. Candidates can apply from a public URL → land in the database against the right job.
-2. The client (plus internal team) can log into the portal and see those candidates.
-
-Internal team visibility already works. The two gaps are the public apply page and client access.
+Shipping the remaining two phases in one migration + one code pass so we can fire them together.
 
 ---
 
-## Part 1 — Public apply page at `/apply/$slug`
+## Phase 5 — Admin area (billing & notifications)
 
-Today the homepage (`/`) is a hardcoded apply form pointing at a placeholder `job_ad_id`. That can't go live.
+### Database
+- New table `payments`: `job_ad_id`, `client_id`, `amount_cents`, `currency` (default `usd`), `status` (`pending` / `paid` / `void`), `triggered_by` (`auto_10_candidates` / `manual`), `notes`, `paid_at`. Admin-only RLS; clients can read their own paid rows.
+- New table `notifications`: `user_id`, `type`, `title`, `body`, `link`, `read_at`. Users read/update their own; system inserts.
+- Trigger on `applications`: when the 10th application is inserted for a `job_ad_id` whose `is_billable = true` and `billing_triggered_at IS NULL`, insert a `payments` row (`pending`, `auto_10_candidates`) and stamp `billing_triggered_at = now()`. One-shot per job.
+- Trigger on `job_ads` insert: if `is_billable`, default `posting_fee_cents` from `app_settings.default_posting_fee_cents` (admin-editable).
 
-**Build:**
-- New route `src/routes/apply.$slug.tsx`: public (no auth), looks up the job ad by slug, only renders the form if `status = 'live'` (otherwise shows "this role is no longer accepting applications").
-- Renders the job title, client name, and the screening questions for that ad.
-- Posts to a new public server function `submitApplication` (no auth middleware) that inserts into `applications` with the correct `job_ad_id`, `source = 'public_form'`, default stage from `job_ad_stages`, and uploads the resume to the `resumes` bucket.
-- Honeypot + basic validation, success screen with confirmation message.
-- Homepage `/` becomes a simple "Find open roles" page listing all `status = 'live'` job ads linking to `/apply/$slug`. (Keeps the current marketing feel, just data-driven.)
-- Each live job's "share link" surfaces in the portal on the job page (copy-to-clipboard) so you can hand it to the client / paste into LinkedIn.
+### UI
+- `/portal/admin` (admin-only, sidebar link gated on `isAdmin`):
+  - **Billing** tab — table of `payments` with filters (status, client, date), mark-paid / void actions.
+  - **Settings** tab — edit `default_posting_fee_cents`, app name (moves out of placeholder).
+- Strip fee/billing fields from the job page for non-admins (currently `posting_fee_cents` / `is_billable` show in `_authenticated.portal.jobs.$slug.tsx` — gate behind `roles.includes("admin")`).
+- Notification bell in header (`portal` layout): unread count + dropdown list, click marks read and follows `link`.
 
-## Part 2 — Client login + scoped visibility
-
-Today clients have no way in. The `clients` table has an `auth_user_id` column but nothing uses it, and RLS on `job_ads`/`applications` is admin/recruiter/member only.
-
-**Database changes (one migration):**
-- Add `'client'` to the `app_role` enum.
-- Add RLS policies:
-  - `job_ads`: clients can SELECT rows where `client_id` matches a row in `clients` with their `auth_user_id`.
-  - `applications`: clients can SELECT rows whose `job_ad_id` belongs to one of their jobs. Read-only (no insert/update/delete).
-  - `job_ad_stages`, `clients` (own row): same scoping for read.
-- Helper SQL function `is_client_for_job(_user uuid, _job_ad_id uuid)` to keep policies readable.
-
-**Portal changes:**
-- `getMyRoles` already exists; extend the portal gate in `_authenticated.portal.tsx` to allow `client` as well.
-- New `getPortalShell` branch: if the user is a client, only return their own job ads.
-- Hide internal-only UI for clients: add-candidate button, stage editor, activity feed, settings, recruiter notes, fit dropdown, pipeline status changes. Clients see: candidate name, applied date, shortlisted flag, resume link.
-- `AppSidebar` hides admin/recruiter-only sections when role is `client`.
-
-**Admin tooling:**
-- On the client detail / settings page, add "Invite client" button that:
-  1. Calls `supabase.auth.admin.inviteUserByEmail(clients.contact_email)` (admin server fn)
-  2. Sets `clients.auth_user_id` to the new user id
-  3. Inserts a `user_roles` row with `role = 'client'`
-- Client receives a magic-link / set-password email and lands in the portal scoped to their jobs.
-
-## Part 3 — Verify the live ad is actually ready
-
-Quick checklist I'll run before shipping:
-- Confirm the target `job_ads` row has `status = 'live'` and a valid `slug`.
-- Confirm `job_ad_stages` has the four default rows (seed trigger exists; verify for this ad).
-- Confirm `resumes` storage bucket allows anon upload (it's currently private — needs a public-insert policy scoped to anon, with read restricted to authenticated portal users via signed URL, which `getResumeSignedUrl` already handles).
+### Server functions (`src/lib/admin.functions.ts`)
+- `listPayments`, `markPaymentPaid`, `voidPayment`, `getAppSettings`, `updateAppSettings` — all `requireSupabaseAuth` + admin role check.
+- `listMyNotifications`, `markNotificationRead`.
 
 ---
 
-## Files / surfaces touched
+## Phase 6 — Roles cleanup & Settings
 
-**New**
-- `src/routes/apply.$slug.tsx` — public apply page
-- `src/routes/_authenticated.portal.clients.tsx` (admin) — invite client button
-- One Supabase migration — `client` role, RLS policies, helper function, storage policy
+### Database
+- Migrate any existing `recruiter` rows in `user_roles` → `member`.
+- Update `handle_new_user()` trigger to insert `member` (not `recruiter`) for new signups.
+- Update `is_recruiter_or_admin()` → rename to `is_internal()`, check `admin` OR `member`. Keep old name as alias for one release to avoid breaking existing policies; update all RLS policies referencing `recruiter` to reference `member`.
+- Drop `recruiter` from `app_role` enum **last** (after policies updated). Postgres requires recreating the enum — done via `ALTER TYPE ... RENAME` + new type swap in the same migration.
 
-**Edited**
-- `src/routes/index.tsx` — replace hardcoded form with list of live roles
-- `src/lib/candidates.functions.ts` — add `submitApplication` (public), `inviteClient` (admin), branch `getPortalShell` by role
-- `src/routes/_authenticated.portal.tsx` — allow `client` role
-- `src/routes/_authenticated.portal.jobs.$slug.tsx` — add share link, hide internal controls for clients
-- `src/components/portal/AppSidebar.tsx` — role-aware nav
+### UI
+- `/portal/settings` (replace placeholder):
+  - **Workspace** — app name (admin-only edit).
+  - **Users** — list users with their roles; admin can invite by email (reuses `inviteClient` pattern but for internal `member`/`admin`) and change role.
+  - All authenticated internal users can view their own profile/email + sign out.
+- Sidebar: relabel "Search Portal" subtitle if needed; remove any leftover `recruiter` references in `AppSidebar.tsx` and `_authenticated.portal.tsx` guards (replace with `member`).
+- Legacy route cleanup: audit `src/routes/` for orphaned files (`_authenticated.portal.candidates.tsx`, `_authenticated.portal.shortlist.tsx`, `_authenticated.portal.$id.tsx` — confirm whether still linked; remove if dead).
 
-## What I'll need from you
+### Server functions
+- `inviteInternalUser({ email, role })` — admin only, sends Supabase magic-link invite, inserts `user_roles` row on first sign-in via `handle_new_user` + a post-confirm hook (or upsert in the invite call).
+- `listInternalUsers`, `updateUserRole`, `removeUser` — admin only.
 
-- Confirm the slug of the job ad you want to go live with so I can sanity-check it before/after.
-- The client's contact email (or confirm `clients.contact_email` is already set for that client) so the invite goes to the right address.
+---
 
-## Out of scope (parking lot)
+## Order of operations
+1. **Migration** (single file): payments + notifications tables & RLS, billing trigger, app_settings defaults, recruiter→member migration, enum swap, policy updates, handle_new_user update.
+2. **Code**: admin functions file, admin route + tabs, notification bell, settings page rewrite, sidebar/guard updates, gate billing fields on job page, dead-route cleanup.
 
-- Email notifications to client / candidate on new application (mentioned earlier — happy to follow up).
-- Fixing the broken internal "Add candidate" button (still parked per your last message).
+## Out of scope (parked)
+- Email notifications on new application (parking-lot item).
+- Fix "Add candidate" internal button (parking-lot item).
+- Portal load speed-up (parking-lot item).
+
+Ready to switch to build mode and fire the migration + code together?

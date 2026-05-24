@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { getMyRoles, getPortalShell } from "@/lib/candidates.functions";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/portal/AppSidebar";
+import { NotificationBell } from "@/components/portal/NotificationBell";
 
 export const Route = createFileRoute("/_authenticated/portal")({
   beforeLoad: async () => {
     const { roles } = await getMyRoles();
     const ok =
       roles.includes("admin") ||
-      roles.includes("recruiter") ||
       roles.includes("member") ||
       roles.includes("client");
     if (!ok) throw redirect({ to: "/unauthorized" });
@@ -32,6 +32,7 @@ function PortalLayout() {
           <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-card px-6">
             <SidebarTrigger />
             <div className="flex-1" />
+            <NotificationBell />
             <span className="text-sm text-muted-foreground">{appName}</span>
           </header>
           <main className="flex-1">

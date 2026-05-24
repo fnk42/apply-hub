@@ -6,6 +6,7 @@ import {
   Activity,
   Settings as SettingsIcon,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -54,9 +55,7 @@ export function AppSidebar() {
   const ads = data?.ads ?? [];
   const roles = data?.roles ?? [];
   const isInternal =
-    roles.includes("admin") ||
-    roles.includes("recruiter") ||
-    roles.includes("member");
+    roles.includes("admin") || roles.includes("member");
   const isAdmin = roles.includes("admin");
 
   return (
@@ -124,14 +123,24 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 {isAdmin && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={isActive("/portal/clients")}>
-                      <Link to="/portal/clients" className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4" />
-                        <span>Clients</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={isActive("/portal/clients")}>
+                        <Link to="/portal/clients" className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4" />
+                          <span>Clients</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={isActive("/portal/admin")}>
+                        <Link to="/portal/admin" className="flex items-center gap-2">
+                          <ShieldCheck className="h-4 w-4" />
+                          <span>Admin</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
                 )}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/portal/settings")}>
