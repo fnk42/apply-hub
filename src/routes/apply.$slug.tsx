@@ -179,7 +179,8 @@ function ApplyPage() {
     setSubmitting(true);
     try {
       const ext = resumeFile!.name.split(".").pop() || "bin";
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `public/${crypto.randomUUID()}.${ext}`;
+
       const up = await supabase.storage
         .from("resumes")
         .upload(path, resumeFile!, {
