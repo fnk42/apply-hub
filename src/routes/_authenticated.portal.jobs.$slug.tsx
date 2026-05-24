@@ -92,24 +92,36 @@ function JobAdDetailPage() {
   const client = adData.client;
   const stats = adData.stats!;
   const { data: candData } = useSuspenseQuery(candidatesQuery(ad.id));
+  const { data: stagesData } = useSuspenseQuery(stagesQuery(ad.id));
+  const { data: rolesData } = useSuspenseQuery(rolesQuery);
+  const isAdmin = rolesData.roles.includes("admin");
+  const stages = stagesData.stages;
+  const stageById = new Map(stages.map((s) => [s.id, s]));
   const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [tab, setTab] = useState<"inbound" | "sourced">("inbound");
   const [search, setSearch] = useState("");
   const [fit, setFit] = useState<string>("all");
-  const [status, setStatus] = useState<string>("all");
+  const [stageFilter, setStageFilter] = useState<string>("all");
   const [shortlist, setShortlist] = useState<string>("all");
 
   const all = candData.candidates;
   const inboundCount = all.filter((c) => c.source === "public_form").length;
   const sourcedCount = all.filter((c) => c.source === "manual").length;
 
+  // Resolve a candidate's stage_id, falling back to legacy_status mapping if missing
+  const resolveStageId = (c: typeof all[number]): string | null => {
+    if (c.stage_id) return c.stage_id;
+    const match = stages.find((s) => s.legacy_status === c.pipeline_status);
+    return match?.id ?? null;
+  };
+
   const rows = all.filter((c) => {
     const wantSource = tab === "inbound" ? "public_form" : "manual";
     if (c.source !== wantSource) return false;
     if (fit !== "all" && c.fit !== fit) return false;
-    if (status !== "all" && c.pipeline_status !== status) return false;
+    if (stageFilter !== "all" && resolveStageId(c) !== stageFilter) return false;
     if (shortlist === "on" && !c.shortlisted) return false;
     if (shortlist === "off" && c.shortlisted) return false;
     if (search) {
@@ -143,14 +155,15 @@ function JobAdDetailPage() {
     }
   }
 
-  async function changeStatus(id: string, v: string) {
+  async function changeStage(id: string, stageId: string) {
     try {
-      await updateCandidate({ data: { id, patch: { pipeline_status: v as any } } });
+      await updateCandidate({ data: { id, patch: { stage_id: stageId } } });
       qc.invalidateQueries({ queryKey: ["candidates"] });
     } catch (e: any) {
       toast.error(e?.message || "Failed");
     }
   }
+
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
