@@ -8,15 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-function normalizeRedirect(value: string | undefined) {
+function normalizeRedirect(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/portal";
   return value;
 }
 
-function buildLoginCallback(destination: string) {
-  const params = new URLSearchParams({ redirect: destination });
-  return `${window.location.origin}/login?${params.toString()}`;
-}
+const POST_LOGIN_KEY = "pipit:post_login_redirect";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: `Sign in — ${company.name}` }] }),
