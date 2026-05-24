@@ -11,6 +11,7 @@ import {
   listCandidates,
   listJobAdStages,
   updateCandidate,
+  getResumeSignedUrl,
 } from "@/lib/candidates.functions";
 import { setJobAdStatus } from "@/lib/jobs.functions";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ const stagesQuery = (jobAdId: string) =>
 const rolesQuery = queryOptions({
   queryKey: ["my-roles"],
   queryFn: () => getMyRoles(),
+  staleTime: 60_000,
 });
 
 
@@ -420,6 +422,7 @@ function JobAdDetailPage() {
                 <TableHead className="w-[80px] text-right">YOE</TableHead>
                 <TableHead className="w-[200px]">Stage</TableHead>
                 <TableHead>Fit</TableHead>
+                <TableHead className="w-[90px]">Resume</TableHead>
                 <TableHead className="w-[100px] text-center">Shortlist</TableHead>
               </TableRow>
             </TableHeader>
@@ -476,6 +479,9 @@ function JobAdDetailPage() {
                   </TableCell>
                   <TableCell>
                     <FitBadge value={c.fit} />
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <ResumeLink path={(c as any).resume_url ?? null} />
                   </TableCell>
                   <TableCell
                     className="text-center"
@@ -576,7 +582,7 @@ function JdPanel({
     jd_text: string | null;
     jd_url: string | null;
     linkedin_job_url: string | null;
-    posting_fee_cents?: number | null;
+    posting_fee?: number | null;
     is_billable?: boolean | null;
     billing_triggered_at?: string | null;
   };
@@ -588,7 +594,7 @@ function JdPanel({
   const hasAnyLink = !!(ad.jd_url || ad.linkedin_job_url);
   if (!hasJdText && !hasAnyLink && !isAdmin) return null;
 
-  const fee = (ad as any).posting_fee_cents as number | null | undefined;
+  const fee = (ad as any).posting_fee as number | null | undefined;
   const billable = !!(ad as any).is_billable;
   const triggered = (ad as any).billing_triggered_at as string | null | undefined;
 
@@ -664,7 +670,7 @@ function JdPanel({
             Posting fee:{" "}
             <span className="font-medium text-foreground">
               {typeof fee === "number" && fee > 0
-                ? `$${(fee / 100).toLocaleString()}`
+                ? `KES ${fee.toLocaleString("en-KE")}`
                 : "—"}
             </span>
           </span>
@@ -683,5 +689,34 @@ function JdPanel({
     </div>
   );
 }
+
+function ResumeLink({ path }: { path: string | null }) {
+  const [busy, setBusy] = useState(false);
+  if (!path) return <span className="text-xs text-muted-foreground">—</span>;
+  async function open(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { url } = await getResumeSignedUrl({ data: { path: path! } });
+      window.open(url, "_blank");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not open resume");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      onClick={open}
+      disabled={busy}
+      className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+    >
+      <FileText className="h-3 w-3" />
+      {busy ? "Opening…" : "View"}
+    </button>
+  );
+}
+
 
 

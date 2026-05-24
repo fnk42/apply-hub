@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 const shellQuery = queryOptions({
   queryKey: ["portal-shell"],
   queryFn: () => getPortalShell(),
+  staleTime: 30_000,
 });
 
 const rolesQuery = queryOptions({
   queryKey: ["my-roles"],
   queryFn: () => getMyRoles(),
+  staleTime: 60_000,
 });
 
 export const Route = createFileRoute("/_authenticated/portal/jobs/")({

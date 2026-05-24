@@ -37,6 +37,7 @@ export function AppSidebar() {
   const { data } = useQuery({
     queryKey: ["portal-shell"],
     queryFn: () => getPortalShell(),
+    staleTime: 30_000,
   });
 
   useEffect(() => {

@@ -1,49 +1,82 @@
-# Add Ad + JD on job page + Close ad
 
-Scoped to items #1 and #2 from the parking lot, plus the ability to close an existing ad. No schema changes — existing `job_ads` columns (incl. `status`, `closed_at`) cover everything.
+# Admin Job Ads tab + KES currency + fixes + audit
 
-## 1. Add Ad (admin only)
+## 1. Admin → Job Ads tab (new)
 
-**Entry points (admin-only, gated by `has_role('admin')`):**
-- "New job ad" button on `/portal/jobs` list page header
-- Tile/link in `/portal/admin`
+New tab in `/portal/admin` alongside Billing and Settings: **Job Ads**.
 
-**New route:** `/portal/jobs/new` — admin-guarded; non-admins redirected to `/portal/jobs`.
+Table columns: Client · Title · Status · Roles · Fee (KES) · Billable · Billing status · Created · Actions (Open).
 
-**Form fields:**
-- Client (dropdown from `clients`)
-- Title + Slug (auto-derived from title, editable, uniqueness validated)
-- JD text (textarea) + JD URL (optional) + LinkedIn job URL (optional)
-- Roles count (default 1 — e.g. Business Manager = 3)
-- Start date (optional)
-- Is billable (toggle, default on)
-- Posting fee in dollars (default from `app_settings.default_posting_fee_cents`, editable; stored as cents — e.g. $35,000 → 3,500,000)
-- Status defaults to `pending_authorization`
+- Lists every `job_ads` row (admin-only, via `supabaseAdmin`).
+- Business Manager will appear here as `pending_authorization` immediately — no need to wait for the 10-candidate billing trigger.
+- Status filter chips (All / Pending / Live / Closed).
+- Row click → `/portal/jobs/$slug`.
 
-**Server fn:** `createJobAd` in `src/lib/jobs.functions.ts`, admin-only via `requireSupabaseAuth` + admin check. Inserts into `job_ads` with `created_by = userId`. Existing `seed_default_job_ad_stages` trigger auto-seeds the pipeline stages.
+New server fn `listAllJobAds` in `src/lib/admin.functions.ts`.
 
-On success: redirect to `/portal/jobs/{slug}`.
+## 2. Currency: KES, no cents
 
-## 2. JD visible on job detail page
+Switch storage and display from USD cents to whole KES.
 
-On `/portal/jobs/$slug`, add a collapsible JD panel above the pipeline showing:
-- Title, client name, roles_count badge, status badge
-- JD text (preserved-whitespace block, collapsed to ~6 lines with "Show more")
-- External links row: JD URL, LinkedIn job URL (when set)
-- Admin-only inline strip: posting fee, billing status (pending / triggered_at / paid)
+**Schema migration:**
+- `job_ads.posting_fee_cents` → rename to `posting_fee` (integer, whole KES). Existing values divided by 100 during migration (so $35,000 stored as 3,500,000 cents → 35,000 KES).
+- `payments.amount_cents` → rename to `amount` (integer, whole KES). Same /100 conversion.
+- `payments.currency` default → `'kes'`; backfill existing rows to `'kes'`.
+- `app_settings` key `default_posting_fee_cents` → `default_posting_fee` (whole KES). Default value 35000.
+- Update `maybe_trigger_billing()` and `set_default_posting_fee()` triggers to use new column names and new default (35000).
 
-Pipeline stays directly below — JD is visible without drilling into a candidate.
+**Code updates** (all `_cents` references → whole KES, no `/100` math):
+- `src/lib/jobs.functions.ts` (`createJobAd` input + insert)
+- `src/lib/admin.functions.ts` (`listPayments`, `getAppSettings`, `updateAppSettings`)
+- `src/lib/candidates.functions.ts` (`getJobAdBySlug` billing fields)
+- `src/routes/_authenticated.portal.admin.tsx` (Billing table amount, Settings fee input — label "Default posting fee (KES)")
+- `src/routes/_authenticated.portal.jobs.new.tsx` (Posting fee input — label "KES")
+- `src/routes/_authenticated.portal.jobs.$slug.tsx` (JD admin strip)
+- Formatting: `KES 35,000` (no decimals, thousands separator).
 
-## 3. Close ad (admin only)
+## 3. Fix "Add candidate" (parking lot #3)
 
-Admin-only "Close ad" button in the JD panel header on `/portal/jobs/$slug`.
+Audit `/portal/jobs/$slug/add-candidate` and the entry button on the job page:
+- Verify the route exists in `routeTree.gen.ts` and the button links correctly.
+- Confirm `addCandidateManual` server fn (or whatever it's called) is wired, validates input, inserts into `applications` with `source='manual'`, and respects RLS.
+- Fix resume upload to `resumes` bucket if broken.
+- Toast + redirect to job page on success; surface real error message on failure.
 
-- Confirmation modal: "Close this ad? Candidates remain visible but no new applications will be accepted."
-- Server fn `closeJobAd({ id })`: sets `status = 'closed'` and `closed_at = now()`.
-- Reopen action also available for already-closed ads (`status = 'open'`, `closed_at = null`).
-- When `status = 'closed'`, the public application form on the candidate-facing job page shows a "This role is no longer accepting applications" notice instead of the form.
+## 4. Portal load speed (parking lot #5)
+
+Measured wins, no architectural rewrite:
+- **Parallelize** sequential awaits in `getPortalShell` and `getJobAdBySlug` with `Promise.all`.
+- **Stage prefetch:** in `/portal/jobs` index loader, `ensureQueryData` for the portal shell so sidebar doesn't refetch on every nav.
+- **Select narrow columns** instead of `select('*')` on hot queries (applications list, job_ads list).
+- **Stable React Query keys** + `staleTime: 30_000` on shell + job lists so sidebar/job list don't re-fetch on every route change.
+- **Lazy-mount** `NotificationBell` polling to one interval instead of per-mount.
+
+Skip: code-splitting / route chunking (already on by default in TanStack Start).
+
+## 5. Resume visible on candidate row (front DB view)
+
+On `/portal/jobs/$slug` candidate list (and `/portal/candidates` if it shows the same table):
+- Add a **Resume** column with a "View" link → opens `resume_url` (signed URL for the `resumes` bucket) in a new tab.
+- "—" when no resume on file.
+- Include `resume_url` in the candidate list query projection if not already there.
+
+## 6. End-to-end audit (after the above lands)
+
+Walk every route signed in as admin, member, and client. For each, verify:
+- Loads without errors (console + network 4xx/5xx clean).
+- RLS behaves correctly (clients see only their own jobs/candidates/paid payments).
+- Add-ad → appears in sidebar Pending + Admin → Job Ads tab.
+- Add-candidate → appears in pipeline + activity log; 10th candidate triggers a `pending` payment in KES.
+- Close ad → status flips, `/apply/$slug` shows "no longer accepting" notice; reopen works.
+- JD panel renders for admin (with fee + billing strip) and client (without).
+- Admin → Billing: mark paid / void work; amounts display as KES.
+- Settings: change app name + default fee, verify it propagates to new ads.
+- Resume link opens correctly for uploaded and manually-added candidates.
+- Lighthouse-style spot check: TTI on `/portal` and `/portal/jobs/$slug` after speed changes.
+
+Findings written up as a short report at the end of the build with any follow-ups flagged.
 
 ## Out of scope (deferred)
 
-- Full edit of all ad fields (only close/reopen for now)
-- Add Candidate fix (#3), portal load speedup (#5), email notifications (#4) — next pass
+- Email notifications (#4) — parked per your call.
+- Full edit of all ad fields beyond create + close/reopen.

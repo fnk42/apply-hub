@@ -251,7 +251,7 @@ export type Database = {
           jd_text: string | null
           jd_url: string | null
           linkedin_job_url: string | null
-          posting_fee_cents: number | null
+          posting_fee: number | null
           roles_count: number
           slug: string
           start_date: string | null
@@ -272,7 +272,7 @@ export type Database = {
           jd_text?: string | null
           jd_url?: string | null
           linkedin_job_url?: string | null
-          posting_fee_cents?: number | null
+          posting_fee?: number | null
           roles_count?: number
           slug: string
           start_date?: string | null
@@ -293,7 +293,7 @@ export type Database = {
           jd_text?: string | null
           jd_url?: string | null
           linkedin_job_url?: string | null
-          posting_fee_cents?: number | null
+          posting_fee?: number | null
           roles_count?: number
           slug?: string
           start_date?: string | null
@@ -346,7 +346,7 @@ export type Database = {
       }
       payments: {
         Row: {
-          amount_cents: number
+          amount: number
           client_id: string
           created_at: string
           currency: string
@@ -359,7 +359,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          amount_cents?: number
+          amount?: number
           client_id: string
           created_at?: string
           currency?: string
@@ -372,7 +372,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          amount_cents?: number
+          amount?: number
           client_id?: string
           created_at?: string
           currency?: string

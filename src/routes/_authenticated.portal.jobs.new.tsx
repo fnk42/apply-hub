@@ -63,10 +63,10 @@ function NewJobAdForm() {
   const { data: settingsData } = useSuspenseQuery(settingsQ);
   const navigate = useNavigate();
 
-  const defaultFeeDollars = useMemo(() => {
-    const cents = settingsData?.defaultPostingFeeCents;
-    if (typeof cents === "number" && cents > 0) return String(Math.round(cents / 100));
-    return "";
+  const defaultFee = useMemo(() => {
+    const v = settingsData?.defaultPostingFee;
+    if (typeof v === "number" && v > 0) return String(v);
+    return "35000";
   }, [settingsData]);
 
   const [clientId, setClientId] = useState<string>("");
@@ -79,7 +79,7 @@ function NewJobAdForm() {
   const [rolesCount, setRolesCount] = useState("1");
   const [startDate, setStartDate] = useState("");
   const [isBillable, setIsBillable] = useState(true);
-  const [feeDollars, setFeeDollars] = useState(defaultFeeDollars);
+  const [fee, setFee] = useState(defaultFee);
   const [status, setStatus] = useState<"pending_authorization" | "live" | "draft">(
     "pending_authorization",
   );
@@ -105,14 +105,14 @@ function NewJobAdForm() {
       toast.error("Roles count must be at least 1");
       return;
     }
-    let feeCents: number | null = null;
-    if (isBillable && feeDollars.trim() !== "") {
-      const dollars = Number(feeDollars);
-      if (!Number.isFinite(dollars) || dollars < 0) {
+    let feeNum: number | null = null;
+    if (isBillable && fee.trim() !== "") {
+      const n = Math.round(Number(fee));
+      if (!Number.isFinite(n) || n < 0) {
         toast.error("Posting fee must be a number");
         return;
       }
-      feeCents = Math.round(dollars * 100);
+      feeNum = n;
     }
 
     setSubmitting(true);
@@ -128,7 +128,7 @@ function NewJobAdForm() {
           roles_count: rolesNum,
           start_date: startDate || undefined,
           is_billable: isBillable,
-          posting_fee_cents: feeCents,
+          posting_fee: feeNum,
           status,
         },
       });
@@ -271,18 +271,18 @@ function NewJobAdForm() {
           </div>
           {isBillable && (
             <div className="mt-4 space-y-2">
-              <Label htmlFor="fee">Posting fee (USD)</Label>
+              <Label htmlFor="fee">Posting fee (KES)</Label>
               <Input
                 id="fee"
                 type="number"
                 min={0}
                 step={1}
-                value={feeDollars}
-                onChange={(e) => setFeeDollars(e.target.value)}
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
                 placeholder="35000"
               />
               <p className="text-xs text-muted-foreground">
-                Stored in cents. Leave empty to use the workspace default.
+                Charged in Kenyan Shillings. Leave empty to use the workspace default.
               </p>
             </div>
           )}
