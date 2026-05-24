@@ -2,13 +2,28 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getMyRoles, listClients, inviteClient } from "@/lib/candidates.functions";
+import {
+  getMyRoles,
+  listClients,
+  inviteClient,
+  createClient,
+} from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Plus } from "lucide-react";
+
 
 const clientsQuery = queryOptions({
   queryKey: ["admin-clients"],
