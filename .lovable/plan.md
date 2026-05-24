@@ -1,22 +1,21 @@
 ## Plan
 
-1. **Keep the OAuth callback on the login route**
-   - Change Google sign-in to use a callback URL like `/login?redirect=/portal` instead of sending the OAuth return directly to `/portal`.
-   - This lets the `lovable.auth.signInWithOAuth()` flow finish on the login page and store the new session before protected routes run.
+1. **Stop hard-reloading after successful sign-in**
+   - Replace `window.location.href = destination` in `src/routes/login.tsx` with TanStack Router client navigation.
+   - This keeps the newly stored browser session available while navigating to `/portal`.
 
-2. **Make login wait for a restored session**
-   - On `/login`, check `supabase.auth.getSession()` first, then `getUser()` only after a session exists.
-   - Once authenticated, navigate to the requested `redirect` target or `/portal`.
-   - Avoid redirecting too early while incognito storage/session restoration is still settling.
+2. **Use the same client navigation for already-signed-in users**
+   - When `/login` detects an existing valid session, navigate in-app instead of forcing a document reload.
+   - This prevents the protected route from being checked during SSR without access to the browser session.
 
-3. **Avoid unsafe redirect targets**
-   - Normalize the `redirect` query param so only same-site paths like `/portal` are used.
-   - Fall back to `/portal` for missing, external, or malformed values.
+3. **Keep OAuth callback behavior from the prior fix**
+   - Continue returning Google OAuth to `/login?redirect=/portal` first.
+   - After `/login` confirms the session, forward via client navigation.
 
-4. **Preserve the protected route checks**
-   - Keep `_authenticated` responsible for requiring a logged-in user.
-   - Keep `_authenticated.portal` responsible for role access, but do not mask auth/session timing errors as permission denial.
+4. **Verify the login page and routing behavior**
+   - Confirm `/login?redirect=/portal` renders.
+   - Check browser console/dev logs for route or dynamic import errors after the change.
 
 ## Technical details
 
-The likely failure in incognito is that OAuth succeeds, but the app returns directly to `/portal` before the client session is reliably available to the protected route/server-function role check. The fix routes the OAuth callback back through `/login`, which is public and can safely complete session setup, then forwards to `/portal` after the session is confirmed.
+The current code signs the user in successfully, then uses `window.location.href` to open `/portal` as a brand-new page load. On that first server-rendered request, the server cannot read the browser-only auth session yet, so `_authenticated` sends the user back to `/login`. Client-side navigation avoids that SSR/session mismatch.

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -32,10 +32,15 @@ function LoginPage() {
   
   const { redirect: redirectTo } = Route.useSearch();
   const destination = redirectTo;
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
+
+  function goToDestination() {
+    void navigate({ to: destination as any });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +52,7 @@ function LoginPage() {
 
       const { data } = await supabase.auth.getUser();
       if (!cancelled && data.user) {
-        window.location.href = destination;
+        goToDestination();
       }
 
     }
@@ -77,7 +82,7 @@ function LoginPage() {
           password,
         });
         if (error) throw error;
-        window.location.href = destination;
+        goToDestination();
       }
     } catch (err: any) {
       toast.error(err?.message || "Sign-in failed");
@@ -93,7 +98,7 @@ function LoginPage() {
         redirect_uri: buildLoginCallback(destination),
       });
       if (result.error) throw result.error;
-      if (!result.redirected) window.location.href = destination;
+      if (!result.redirected) goToDestination();
     } catch (err: any) {
       toast.error(err?.message || "Google sign-in failed");
       setLoading(false);
