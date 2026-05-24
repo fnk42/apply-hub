@@ -129,6 +129,10 @@ function JobAdDetailPage() {
   const [fit, setFit] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [shortlist, setShortlist] = useState<string>("all");
+  const [jdExpanded, setJdExpanded] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const all = candData.candidates;
   const inboundCount = all.filter((c) => c.source === "public_form").length;
