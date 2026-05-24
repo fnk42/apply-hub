@@ -238,7 +238,10 @@ function JobAdDetailPage() {
         </div>
       </div>
 
+      {ad.status === "live" && <ShareLinkCard slug={ad.slug} />}
+
       {/* Candidates */}
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-6">
         <TabsList>
           <TabsTrigger value="inbound">
