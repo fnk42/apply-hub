@@ -421,6 +421,7 @@ function JobAdDetailPage() {
                 <TableHead className="w-[80px] text-right">YOE</TableHead>
                 <TableHead className="w-[200px]">Stage</TableHead>
                 <TableHead>Fit</TableHead>
+                <TableHead className="w-[90px]">Resume</TableHead>
                 <TableHead className="w-[100px] text-center">Shortlist</TableHead>
               </TableRow>
             </TableHeader>
@@ -477,6 +478,9 @@ function JobAdDetailPage() {
                   </TableCell>
                   <TableCell>
                     <FitBadge value={c.fit} />
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <ResumeLink path={(c as any).resume_url ?? null} />
                   </TableCell>
                   <TableCell
                     className="text-center"
