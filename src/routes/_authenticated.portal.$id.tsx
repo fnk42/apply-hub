@@ -1,13 +1,26 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   getCandidate,
   updateCandidate,
+  deleteCandidate,
+  getPortalShell,
 } from "@/lib/candidates.functions";
 import { openResumeInNewTab } from "@/lib/open-resume";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   FitBadge,
   STATUS_LABELS,
@@ -16,7 +29,7 @@ import {
 import { screeningQuestions } from "@/config/screening";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Download, ExternalLink, Star } from "lucide-react";
+import { Download, ExternalLink, Star, Trash2 } from "lucide-react";
 
 const candidateQuery = (id: string) =>
   queryOptions({
@@ -29,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/portal/$id")({
     context.queryClient.ensureQueryData(candidateQuery(params.id)),
   component: CandidateDetailPage,
 });
+
 
 function CandidateDetailPage() {
   const { id } = Route.useParams();
