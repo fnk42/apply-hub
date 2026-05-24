@@ -7,7 +7,9 @@ import {
 import { useState } from "react";
 import {
   getJobAdBySlug,
+  getMyRoles,
   listCandidates,
+  listJobAdStages,
   updateCandidate,
 } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
@@ -30,11 +32,9 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FitBadge,
-  StatusBadge,
   FIT_LABELS,
-  STATUS_LABELS,
 } from "@/components/portal/Badges";
-import { ExternalLink, FileText, Linkedin, Plus, Search, Star } from "lucide-react";
+import { ExternalLink, FileText, Linkedin, Plus, Search, Settings2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -50,6 +50,18 @@ const candidatesQuery = (jobAdId: string) =>
     queryKey: ["candidates", "by-ad", jobAdId],
     queryFn: () => listCandidates({ data: { job_ad_id: jobAdId } }),
   });
+
+const stagesQuery = (jobAdId: string) =>
+  queryOptions({
+    queryKey: ["job-ad-stages", jobAdId],
+    queryFn: () => listJobAdStages({ data: { job_ad_id: jobAdId } }),
+  });
+
+const rolesQuery = queryOptions({
+  queryKey: ["my-roles"],
+  queryFn: () => getMyRoles(),
+});
+
 
 export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
   loader: async ({ context, params }) => {
