@@ -142,6 +142,7 @@ function ApplyPage() {
       // 2. Insert application
       const ins = await supabase.from("applications").insert({
         source: "public_form",
+        job_ad_id: "00000000-0000-0000-0000-000000000010",
         full_name: values.full_name,
         email: values.email,
         phone: values.phone,

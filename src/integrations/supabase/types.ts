@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       application_events: {
         Row: {
           actor_email: string | null
@@ -66,6 +84,7 @@ export type Database = {
           full_name: string
           honeypot: string | null
           id: string
+          job_ad_id: string
           linkedin_url: string | null
           phone: string | null
           pipeline_status: string
@@ -87,6 +106,7 @@ export type Database = {
           full_name: string
           honeypot?: string | null
           id?: string
+          job_ad_id: string
           linkedin_url?: string | null
           phone?: string | null
           pipeline_status?: string
@@ -108,6 +128,7 @@ export type Database = {
           full_name?: string
           honeypot?: string | null
           id?: string
+          job_ad_id?: string
           linkedin_url?: string | null
           phone?: string | null
           pipeline_status?: string
@@ -119,7 +140,125 @@ export type Database = {
           updated_at?: string
           years_of_experience?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "applications_job_ad_id_fkey"
+            columns: ["job_ad_id"]
+            isOneToOne: false
+            referencedRelation: "job_ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          auth_user_id: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contract_ad_allowance: number
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contract_ad_allowance?: number
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contract_ad_allowance?: number
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
         Relationships: []
+      }
+      job_ads: {
+        Row: {
+          authorized_at: string | null
+          authorized_by: string | null
+          billing_triggered_at: string | null
+          client_id: string
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_billable: boolean
+          jd_text: string | null
+          jd_url: string | null
+          linkedin_job_url: string | null
+          posting_fee_cents: number | null
+          roles_count: number
+          slug: string
+          start_date: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          authorized_at?: string | null
+          authorized_by?: string | null
+          billing_triggered_at?: string | null
+          client_id: string
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_billable?: boolean
+          jd_text?: string | null
+          jd_url?: string | null
+          linkedin_job_url?: string | null
+          posting_fee_cents?: number | null
+          roles_count?: number
+          slug: string
+          start_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          authorized_at?: string | null
+          authorized_by?: string | null
+          billing_triggered_at?: string | null
+          client_id?: string
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_billable?: boolean
+          jd_text?: string | null
+          jd_url?: string | null
+          linkedin_job_url?: string | null
+          posting_fee_cents?: number | null
+          roles_count?: number
+          slug?: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_ads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -157,7 +296,7 @@ export type Database = {
       is_recruiter_or_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "recruiter"
+      app_role: "admin" | "recruiter" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -285,7 +424,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "recruiter"],
+      app_role: ["admin", "recruiter", "member"],
     },
   },
 } as const
