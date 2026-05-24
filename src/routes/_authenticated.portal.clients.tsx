@@ -7,6 +7,8 @@ import {
   listClients,
   inviteClient,
   createClient,
+  deleteClient,
+
 } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +24,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Plus } from "lucide-react";
+import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 
 
 const clientsQuery = queryOptions({
@@ -63,6 +65,21 @@ function ClientsPage() {
     }
   }
 
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete client "${name}"? This will also remove all of their job ads, candidates, and payments. This cannot be undone.`)) return;
+    setBusy(id);
+    try {
+      await deleteClient({ data: { client_id: id } });
+      toast.success("Client deleted");
+      qc.invalidateQueries({ queryKey: ["admin-clients"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <div className="flex items-start justify-between gap-4">
@@ -86,6 +103,8 @@ function ClientsPage() {
               <TableHead>Contact</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="w-[180px] text-right">Access</TableHead>
+              <TableHead className="w-[60px]"></TableHead>
+
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -121,6 +140,18 @@ function ClientsPage() {
                     </Button>
                   )}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    disabled={busy === c.id}
+                    onClick={() => handleDelete(c.id, c.name)}
+                    aria-label="Delete client"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+
               </TableRow>
             ))}
           </TableBody>

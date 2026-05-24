@@ -315,6 +315,69 @@ export const createClient = createServerFn({ method: "POST" })
     return { id: row.id };
   });
 
+// ---- deleteClient (admin) ----
+export const deleteClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ client_id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Only admins can delete clients.");
+
+    // Look up auth user linked to this client (so we can revoke their client role)
+    const { data: client } = await supabaseAdmin
+      .from("clients")
+      .select("auth_user_id")
+      .eq("id", data.client_id)
+      .maybeSingle();
+
+    // Find dependent job ads
+    const { data: jobs } = await supabaseAdmin
+      .from("job_ads")
+      .select("id")
+      .eq("client_id", data.client_id);
+    const jobIds = (jobs ?? []).map((j) => j.id);
+
+    if (jobIds.length > 0) {
+      const { data: apps } = await supabaseAdmin
+        .from("applications")
+        .select("id")
+        .in("job_ad_id", jobIds);
+      const appIds = (apps ?? []).map((a) => a.id);
+      if (appIds.length > 0) {
+        await supabaseAdmin.from("application_events").delete().in("application_id", appIds);
+        await supabaseAdmin.from("applications").delete().in("id", appIds);
+      }
+      await supabaseAdmin.from("payments").delete().in("job_ad_id", jobIds);
+      await supabaseAdmin.from("job_ad_stages").delete().in("job_ad_id", jobIds);
+      await supabaseAdmin.from("job_ads").delete().in("id", jobIds);
+    }
+
+    if (client?.auth_user_id) {
+      await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", client.auth_user_id)
+        .eq("role", "client");
+    }
+
+    const { error } = await supabaseAdmin
+      .from("clients")
+      .delete()
+      .eq("id", data.client_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+
 
 // ---- getJobAdBySlug ----
 export const getJobAdBySlug = createServerFn({ method: "POST" })
