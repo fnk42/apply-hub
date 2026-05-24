@@ -109,6 +109,68 @@ export const submitApplication = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---- uploadPublicResume (PUBLIC) ----
+// Proxies the resume upload through our own origin so applicants on
+// networks/devices that block *.supabase.co (ad blockers, mobile carriers,
+// privacy browsers) can still apply.
+const ALLOWED_RESUME_MIME = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+] as const;
+const MAX_RESUME_BYTES = 10 * 1024 * 1024;
+
+const uploadResumeInput = z.object({
+  job_ad_id: z
+    .string()
+    .regex(
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+      "Invalid UUID",
+    ),
+  filename: z.string().trim().min(1).max(200),
+  content_type: z.enum(ALLOWED_RESUME_MIME),
+  size: z.number().int().positive().max(MAX_RESUME_BYTES),
+  data_base64: z.string().min(1).max(20 * 1024 * 1024), // ~14MB b64 of a 10MB file
+});
+
+export const uploadPublicResume = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => uploadResumeInput.parse(data))
+  .handler(async ({ data }) => {
+    // Re-verify the ad is live before accepting bytes.
+    const { data: ad, error: adErr } = await supabaseAdmin
+      .from("job_ads")
+      .select("id, status")
+      .eq("id", data.job_ad_id)
+      .maybeSingle();
+    if (adErr) throw new Error(adErr.message);
+    if (!ad || ad.status !== "live") {
+      throw new Error("This role is no longer accepting applications.");
+    }
+
+    // Decode base64 → bytes
+    const bytes = Uint8Array.from(atob(data.data_base64), (c) =>
+      c.charCodeAt(0),
+    );
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_RESUME_BYTES) {
+      throw new Error("Invalid file size");
+    }
+
+    const safeName = data.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const ext = safeName.includes(".")
+      ? safeName.split(".").pop()!.toLowerCase().slice(0, 8)
+      : "bin";
+    const path = `public/${crypto.randomUUID()}.${ext}`;
+
+    const { data: up, error: upErr } = await supabaseAdmin.storage
+      .from("resumes")
+      .upload(path, bytes, {
+        contentType: data.content_type,
+        upsert: false,
+      });
+    if (upErr) throw new Error(upErr.message);
+    return { path: up.path };
+  });
+
 
 
 const FIT_VALUES = ["unrated", "weak", "medium", "strong"] as const;
