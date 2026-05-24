@@ -178,16 +178,32 @@ function ApplyPage() {
 
     setSubmitting(true);
     try {
-      const ext = resumeFile!.name.split(".").pop() || "bin";
-      const path = `public/${crypto.randomUUID()}.${ext}`;
+      // Upload via our own origin to avoid ad blockers / DNS filters that
+      // block *.supabase.co for applicants.
+      const buf = await resumeFile!.arrayBuffer();
+      let binary = "";
+      const chunk = 0x8000;
+      const view = new Uint8Array(buf);
+      for (let i = 0; i < view.length; i += chunk) {
+        binary += String.fromCharCode.apply(
+          null,
+          Array.from(view.subarray(i, i + chunk)),
+        );
+      }
+      const data_base64 = btoa(binary);
 
-      const up = await supabase.storage
-        .from("resumes")
-        .upload(path, resumeFile!, {
-          contentType: resumeFile!.type,
-          upsert: false,
-        });
-      if (up.error) throw up.error;
+      const uploaded = await uploadPublicResume({
+        data: {
+          job_ad_id: ad!.id,
+          filename: resumeFile!.name,
+          content_type: resumeFile!.type as
+            | "application/pdf"
+            | "application/msword"
+            | "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          size: resumeFile!.size,
+          data_base64,
+        },
+      });
 
       await submitApplication({
         data: {
@@ -199,7 +215,7 @@ function ApplyPage() {
           current_company: values.current_company,
           years_of_experience: values.years_of_experience,
           cover_note: values.cover_note,
-          resume_path: up.data.path,
+          resume_path: uploaded.path,
           screening_answers: answers,
           honeypot: "",
         },
