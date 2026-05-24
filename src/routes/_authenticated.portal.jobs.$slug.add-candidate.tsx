@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { createCandidate, getJobAdBySlug } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
