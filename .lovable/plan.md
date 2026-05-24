@@ -1,37 +1,32 @@
-# Phase 2 addendum — Dashboard removal + `/portal` redirect
+## Problem
 
-Locked in your choice (b). No other Phase 2 scope changes.
+Google OAuth succeeds (auth logs confirm `Login` events returning 200), but the user lands back on `/login`. The OAuth flow is fine — the post-auth routing logic is looping.
 
-## What changes in Phase 2
+Two compounding bugs:
 
-1. **Sidebar**
-   - Remove the "Dashboard" item.
-   - New groups: LIVE / PENDING / CLOSED, plus Activity Log and Settings.
-   - Header shows `app_settings.app_name` ("Project Dashboard").
+1. **`src/routes/login.tsx`** ignores the `?redirect=` query param and hardcodes the destination to `/portal`. It also doesn't detect an already-active session, so if the user lands back on `/login` with a valid session (e.g. after an OAuth round-trip), nothing forwards them on.
 
-2. **`/portal` route behavior**
-   - Loader queries `job_ads` for `status = 'live'`.
-   - If exactly **1** live ad → `redirect` to `/portal/jobs/$slug` (today: `/portal/jobs/business-manager`).
-   - If **2+** live ads → `redirect` to `/portal/jobs` (the list).
-   - If **0** live ads → `redirect` to `/portal/jobs` (which renders an empty state).
-   - The old dashboard page component (`StatCard` + `PipelineFunnel` + `RecentActivity` grid) is deleted from this route.
+2. **`src/routes/_authenticated.portal.tsx`** wraps `getMyRoles()` in a `try/catch` that treats *any* thrown error as "unauthorized" and redirects to `/unauthorized`. A transient `Unauthorized` from the first server-fn call after OAuth hydration (before the bearer token is attached) gets misclassified, bouncing the user back out and ultimately back to `/login`.
 
-3. **Components kept, not deleted**
-   - `StatCard`, `PipelineFunnel`, `RecentActivity` stay in `src/components/portal/`.
-   - Reused inside `/portal/jobs/$slug` (per-ad funnel + per-ad recent activity in the detail header area).
-   - Reused later in Phase 5 admin overview (`/portal/admin`).
+## Changes
 
-## UAT additions for Phase 2
+### 1. `src/routes/login.tsx`
+- Add `validateSearch` to type the optional `redirect` param.
+- On mount, call `supabase.auth.getUser()`. If a session exists, immediately navigate to `search.redirect ?? "/portal"`.
+- In the email and Google success handlers, navigate to `search.redirect ?? "/portal"` instead of hardcoded `/portal`.
+- Use the same value for the Google `redirect_uri` so the OAuth round-trip lands on the originally-requested page.
 
-Append to the existing Phase 2 checklist:
-6. Visiting `/portal` redirects to `/portal/jobs/business-manager` (since only one live ad exists).
-7. Sidebar no longer shows a "Dashboard" entry.
-8. Sidebar header reads "Project Dashboard".
+### 2. `src/routes/_authenticated.portal.tsx`
+- Remove the blanket `catch → redirect("/unauthorized")`. Only redirect to `/unauthorized` when `getMyRoles()` returns successfully and the role set lacks `admin`/`recruiter`/`member`.
+- Let auth/network errors propagate to the error boundary (which already offers a Try Again button), instead of masking a hydration race as a permission denial.
 
-## Not in this phase
+### 3. No other changes
+- `src/routes/_authenticated.tsx` already awaits `supabase.auth.getUser()` correctly and preserves the originally-requested URL in `?redirect=` — no change needed.
+- No database, server function, or OAuth provider configuration changes.
 
-- No admin overview page yet (Phase 5).
-- No edit of `app_name` from the UI yet (Phase 6 Settings).
-- No change to `/portal/candidates` or `/portal/shortlist` beyond the redirect-to-seed-ad already planned.
+## Verification
 
-Ready to switch to build mode and execute Phase 2 when you approve.
+1. Sign out, then visit `/portal/jobs/business-manager` directly while logged out → redirected to `/login?redirect=/portal/jobs/business-manager`.
+2. Click "Continue with Google" → after Google round-trip, land on `/portal/jobs/business-manager` (not `/login`, not `/portal`).
+3. While signed in, manually visit `/login` → immediately forwarded to `/portal`.
+4. Email/password sign-in honors the same `redirect` param.
