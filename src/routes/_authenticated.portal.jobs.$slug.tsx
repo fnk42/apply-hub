@@ -67,7 +67,11 @@ export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
   loader: async ({ context, params }) => {
     const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
     if (!ad) throw notFound();
-    await context.queryClient.ensureQueryData(candidatesQuery(ad.id));
+    await Promise.all([
+      context.queryClient.ensureQueryData(candidatesQuery(ad.id)),
+      context.queryClient.ensureQueryData(stagesQuery(ad.id)),
+      context.queryClient.ensureQueryData(rolesQuery),
+    ]);
   },
   component: JobAdDetailPage,
   notFoundComponent: () => (
@@ -79,6 +83,7 @@ export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
     </div>
   ),
 });
+
 
 function JobAdDetailPage() {
   const { slug } = Route.useParams();
