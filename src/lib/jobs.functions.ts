@@ -124,7 +124,7 @@ export const setJobAdStatus = createServerFn({ method: "POST" })
 
     const { error } = await supabaseAdmin
       .from("job_ads")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
