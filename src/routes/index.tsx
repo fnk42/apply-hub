@@ -79,6 +79,15 @@ function HomePage() {
             ))}
           </ul>
         )}
+
+        <footer className="mt-20 border-t border-border pt-6 text-xs text-muted-foreground">
+          <Link
+            to="/login"
+            className="hover:text-foreground hover:underline"
+          >
+            Staff sign in
+          </Link>
+        </footer>
       </div>
     </div>
   );

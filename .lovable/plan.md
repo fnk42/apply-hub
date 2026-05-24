@@ -1,86 +1,61 @@
-# Fix "Failed to fetch" on public apply form
+# Fix "Open resume" being blocked by Chrome (ERR_BLOCKED_BY_CLIENT)
 
-## Root cause
+## What's actually happening
 
-In `src/routes/apply.$slug.tsx`, the applicant's browser uploads the resume
-**directly** to `https://<project>.supabase.co/storage/v1/object/resumes/...`
-via `supabase.storage.from("resumes").upload(...)`.
+The server proxy (`getResumeBlob`) is working — bytes are reaching the
+browser fine. The failure is the **next step**: we create a `blob:` URL
+and call `window.open(blobUrl, "_blank")`. A Chrome extension on your
+"Work" profile (or an enterprise policy) blocks navigation to `blob:`
+URLs in a new tab → `ERR_BLOCKED_BY_CLIENT`. Same family of blocker
+that broke the original `supabase.co` link, just one layer deeper.
 
-Many applicants are on mobile networks, Brave/DuckDuckGo, corporate Wi-Fi, or
-have ad/tracker blockers installed. The hostname `*.supabase.co` is on
-several popular blocklists (EasyPrivacy, AdGuard Tracking Protection, etc.).
-When that happens, the upload request is killed before it leaves the device
-and the browser reports a generic **"Failed to fetch"** — exactly what the
-screenshot shows. The form submit never runs because the upload throws first.
+## Fix — stop opening blob: URLs in a new tab
 
-This is the same family of bug as the "view resume" `ERR_BLOCKED_BY_CLIENT`
-issue we already fixed — except on the applicant side, where we cannot ask
-people to disable extensions or switch browsers.
+Two changes, both in `src/lib/open-resume.ts` (no server changes).
 
-## Fix
+### 1. Default action: trigger a download instead of a tab open
 
-Route the upload through our **own** domain (`gptalentportal.com` /
-`*.lovable.app`) so the applicant's browser never contacts `supabase.co`.
+Instead of `window.open(blobUrl)`, create a hidden
+`<a href={blobUrl} download={filename}>` element, click it, then revoke.
+Downloads via blob URLs are not blocked by the extensions / policies
+that block blob-tab navigations. The recruiter gets the resume as a
+normal file in their Downloads folder and opens it locally.
 
-### 1. New public server function — `uploadPublicResume`
+### 2. Same-tab fallback if the click is suppressed
 
-In `src/lib/candidates.functions.ts`, add a `createServerFn({ method: "POST" })`
-(no auth middleware — public, called from the apply page):
+If anything goes wrong with the synthetic click (very rare), fall back
+to `location.href = blobUrl` in the current tab — that path is also not
+flagged by the blocker.
 
-- Input (Zod-validated):
-  - `job_ad_id: string (uuid)` — verify the ad is `live` before accepting bytes
-  - `filename: string` (≤200 chars, sanitized)
-  - `content_type: string` — must be one of the 3 allowed MIME types
-  - `size: number` — must be ≤ 10 MB
-  - `data_base64: string` — the file bytes, base64-encoded
-- Handler:
-  - Re-verify MIME / size / ad status server-side (do not trust the client).
-  - Decode base64 → `Uint8Array`.
-  - `supabaseAdmin.storage.from("resumes").upload(path, bytes, { contentType, upsert: false })`
-    where `path = public/${crypto.randomUUID()}.${ext}`.
-  - Return `{ path }`.
+The function signature stays the same so every caller (candidate detail
+page, candidates list, shortlist page) keeps working with no edits.
 
-This uses `supabaseAdmin` (service-role, server-only) — identical trust model
-to what the existing public `submitApplication` already does for the DB insert.
+### 3. UI copy tweak
 
-### 2. Update `src/routes/apply.$slug.tsx`
+Change the button label from "Open resume" to "Download resume" on
+`src/routes/_authenticated.portal.$id.tsx` to match the new behavior.
+The `Download` icon is already in use.
 
-In `handleSubmit`:
+## Bonus: Staff sign-in link on the public landing page
 
-- Remove the direct `supabase.storage.from("resumes").upload(...)` call.
-- Read `resumeFile` as an `ArrayBuffer`, base64-encode it, and call
-  `uploadPublicResume({ data: { ... } })` instead.
-- Use the returned `path` as `resume_path` when calling `submitApplication`
-  (unchanged).
-- Keep all existing client-side validation (size/MIME) as a fast pre-check;
-  the server re-validates.
+Right now `gptalentportal.com/` is the public "Open roles" page and
+there's no visible way to reach the admin portal — you have to know
+the `/login` URL. Add a small, low-contrast **"Staff sign in"** link in
+the footer area of `src/routes/index.tsx` linking to `/login`. The
+public applicant flow is unchanged; staff get one click to the portal
+from the root domain.
 
-The applicant's browser now only ever talks to our own origin, which
-no blocker filters. The base64 payload travels inside a normal POST to
-`/_serverFn/...` on `gptalentportal.com`.
+## What this does NOT touch
 
-### 3. (Defensive) Bump request body limit awareness
-
-10 MB base64-encoded is ~13.4 MB on the wire. This is well within the
-TanStack Start / Cloudflare Worker request body limits (100 MB), so no
-config change is needed. Noted only so we don't get surprised later.
-
-## What this does NOT change
-
-- No DB schema changes.
-- No RLS changes (we already use `supabaseAdmin` for the public submit).
-- No changes to the recruiter portal, auth, or the resume-view proxy we
-  shipped earlier.
-- The apply form UX is identical — same fields, same validation, same
-  success screen. Only the network path for the resume bytes changes.
+- No DB / RLS / storage changes.
+- No changes to the public apply form or the upload path we shipped earlier.
+- No changes to auth.
+- The server proxy `getResumeBlob` stays as-is — it's working correctly.
 
 ## How we'll verify
 
-1. Open `/apply/<slug>` in an Incognito Brave window (Brave Shields on) —
-   should now submit successfully.
-2. Open in Firefox with uBlock Origin enabled — should submit.
-3. Check Network tab: there should be **zero** requests to
-   `*.supabase.co` from the apply page. All traffic stays on
-   `gptalentportal.com`.
-4. New row appears in `applications` and the resume is downloadable from
-   the recruiter portal (which already uses the server-side proxy).
+1. Click "Download resume" on a candidate detail page on Chrome with
+   the same extensions enabled — file downloads, no `ERR_BLOCKED_BY_CLIENT`.
+2. Visit `https://gptalentportal.com/` — see "Staff sign in" link,
+   click it → land on `/login`, sign in → land in the portal.
+3. Public apply flow at `/apply/<slug>` is unchanged.
