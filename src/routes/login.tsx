@@ -39,7 +39,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const goToDestination = useCallback(() => {
-    void navigate({ to: destination as any });
+    void navigate({ to: destination as any, replace: true });
   }, [destination, navigate]);
 
   useEffect(() => {
