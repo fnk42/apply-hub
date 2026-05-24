@@ -52,6 +52,12 @@ export function AppSidebar() {
 
   const appName = data?.appName ?? "Project Dashboard";
   const ads = data?.ads ?? [];
+  const roles = data?.roles ?? [];
+  const isInternal =
+    roles.includes("admin") ||
+    roles.includes("recruiter") ||
+    roles.includes("member");
+  const isAdmin = roles.includes("admin");
 
   return (
     <Sidebar collapsible="icon">
@@ -60,7 +66,9 @@ export function AppSidebar() {
           <span className="font-serif text-lg tracking-tight text-sidebar-foreground">
             {appName}
           </span>
-          <span className="text-xs text-sidebar-foreground/60">Search Portal</span>
+          <span className="text-xs text-sidebar-foreground/60">
+            {isInternal ? "Search Portal" : "Client Portal"}
+          </span>
         </Link>
       </SidebarHeader>
 
@@ -68,9 +76,11 @@ export function AppSidebar() {
         {GROUPS.map((g) => {
           const items = ads.filter((a) => g.statuses.includes(a.status));
           if (items.length === 0) return null;
+          // Clients only ever see live ads — collapse the "Live" label
+          if (!isInternal && g.key !== "live") return null;
           return (
             <SidebarGroup key={g.key}>
-              <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+              {isInternal && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.map((a) => (
@@ -101,28 +111,40 @@ export function AppSidebar() {
           );
         })}
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/portal/activity")}>
-                  <Link to="/portal/activity" className="flex items-center gap-2">
-                    <Activity className="h-4 w-4" />
-                    <span>Activity Log</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/portal/settings")}>
-                  <Link to="/portal/settings" className="flex items-center gap-2">
-                    <SettingsIcon className="h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isInternal && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/portal/activity")}>
+                    <Link to="/portal/activity" className="flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      <span>Activity Log</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {isAdmin && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/portal/clients")}>
+                      <Link to="/portal/clients" className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4" />
+                        <span>Clients</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/portal/settings")}>
+                    <Link to="/portal/settings" className="flex items-center gap-2">
+                      <SettingsIcon className="h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
