@@ -1,59 +1,49 @@
-# Phase 5 + Phase 6 Plan
+# Add Ad + JD on job page + Close ad
 
-Shipping the remaining two phases in one migration + one code pass so we can fire them together.
+Scoped to items #1 and #2 from the parking lot, plus the ability to close an existing ad. No schema changes — existing `job_ads` columns (incl. `status`, `closed_at`) cover everything.
 
----
+## 1. Add Ad (admin only)
 
-## Phase 5 — Admin area (billing & notifications)
+**Entry points (admin-only, gated by `has_role('admin')`):**
+- "New job ad" button on `/portal/jobs` list page header
+- Tile/link in `/portal/admin`
 
-### Database
-- New table `payments`: `job_ad_id`, `client_id`, `amount_cents`, `currency` (default `usd`), `status` (`pending` / `paid` / `void`), `triggered_by` (`auto_10_candidates` / `manual`), `notes`, `paid_at`. Admin-only RLS; clients can read their own paid rows.
-- New table `notifications`: `user_id`, `type`, `title`, `body`, `link`, `read_at`. Users read/update their own; system inserts.
-- Trigger on `applications`: when the 10th application is inserted for a `job_ad_id` whose `is_billable = true` and `billing_triggered_at IS NULL`, insert a `payments` row (`pending`, `auto_10_candidates`) and stamp `billing_triggered_at = now()`. One-shot per job.
-- Trigger on `job_ads` insert: if `is_billable`, default `posting_fee_cents` from `app_settings.default_posting_fee_cents` (admin-editable).
+**New route:** `/portal/jobs/new` — admin-guarded; non-admins redirected to `/portal/jobs`.
 
-### UI
-- `/portal/admin` (admin-only, sidebar link gated on `isAdmin`):
-  - **Billing** tab — table of `payments` with filters (status, client, date), mark-paid / void actions.
-  - **Settings** tab — edit `default_posting_fee_cents`, app name (moves out of placeholder).
-- Strip fee/billing fields from the job page for non-admins (currently `posting_fee_cents` / `is_billable` show in `_authenticated.portal.jobs.$slug.tsx` — gate behind `roles.includes("admin")`).
-- Notification bell in header (`portal` layout): unread count + dropdown list, click marks read and follows `link`.
+**Form fields:**
+- Client (dropdown from `clients`)
+- Title + Slug (auto-derived from title, editable, uniqueness validated)
+- JD text (textarea) + JD URL (optional) + LinkedIn job URL (optional)
+- Roles count (default 1 — e.g. Business Manager = 3)
+- Start date (optional)
+- Is billable (toggle, default on)
+- Posting fee in dollars (default from `app_settings.default_posting_fee_cents`, editable; stored as cents — e.g. $35,000 → 3,500,000)
+- Status defaults to `pending_authorization`
 
-### Server functions (`src/lib/admin.functions.ts`)
-- `listPayments`, `markPaymentPaid`, `voidPayment`, `getAppSettings`, `updateAppSettings` — all `requireSupabaseAuth` + admin role check.
-- `listMyNotifications`, `markNotificationRead`.
+**Server fn:** `createJobAd` in `src/lib/jobs.functions.ts`, admin-only via `requireSupabaseAuth` + admin check. Inserts into `job_ads` with `created_by = userId`. Existing `seed_default_job_ad_stages` trigger auto-seeds the pipeline stages.
 
----
+On success: redirect to `/portal/jobs/{slug}`.
 
-## Phase 6 — Roles cleanup & Settings
+## 2. JD visible on job detail page
 
-### Database
-- Migrate any existing `recruiter` rows in `user_roles` → `member`.
-- Update `handle_new_user()` trigger to insert `member` (not `recruiter`) for new signups.
-- Update `is_recruiter_or_admin()` → rename to `is_internal()`, check `admin` OR `member`. Keep old name as alias for one release to avoid breaking existing policies; update all RLS policies referencing `recruiter` to reference `member`.
-- Drop `recruiter` from `app_role` enum **last** (after policies updated). Postgres requires recreating the enum — done via `ALTER TYPE ... RENAME` + new type swap in the same migration.
+On `/portal/jobs/$slug`, add a collapsible JD panel above the pipeline showing:
+- Title, client name, roles_count badge, status badge
+- JD text (preserved-whitespace block, collapsed to ~6 lines with "Show more")
+- External links row: JD URL, LinkedIn job URL (when set)
+- Admin-only inline strip: posting fee, billing status (pending / triggered_at / paid)
 
-### UI
-- `/portal/settings` (replace placeholder):
-  - **Workspace** — app name (admin-only edit).
-  - **Users** — list users with their roles; admin can invite by email (reuses `inviteClient` pattern but for internal `member`/`admin`) and change role.
-  - All authenticated internal users can view their own profile/email + sign out.
-- Sidebar: relabel "Search Portal" subtitle if needed; remove any leftover `recruiter` references in `AppSidebar.tsx` and `_authenticated.portal.tsx` guards (replace with `member`).
-- Legacy route cleanup: audit `src/routes/` for orphaned files (`_authenticated.portal.candidates.tsx`, `_authenticated.portal.shortlist.tsx`, `_authenticated.portal.$id.tsx` — confirm whether still linked; remove if dead).
+Pipeline stays directly below — JD is visible without drilling into a candidate.
 
-### Server functions
-- `inviteInternalUser({ email, role })` — admin only, sends Supabase magic-link invite, inserts `user_roles` row on first sign-in via `handle_new_user` + a post-confirm hook (or upsert in the invite call).
-- `listInternalUsers`, `updateUserRole`, `removeUser` — admin only.
+## 3. Close ad (admin only)
 
----
+Admin-only "Close ad" button in the JD panel header on `/portal/jobs/$slug`.
 
-## Order of operations
-1. **Migration** (single file): payments + notifications tables & RLS, billing trigger, app_settings defaults, recruiter→member migration, enum swap, policy updates, handle_new_user update.
-2. **Code**: admin functions file, admin route + tabs, notification bell, settings page rewrite, sidebar/guard updates, gate billing fields on job page, dead-route cleanup.
+- Confirmation modal: "Close this ad? Candidates remain visible but no new applications will be accepted."
+- Server fn `closeJobAd({ id })`: sets `status = 'closed'` and `closed_at = now()`.
+- Reopen action also available for already-closed ads (`status = 'open'`, `closed_at = null`).
+- When `status = 'closed'`, the public application form on the candidate-facing job page shows a "This role is no longer accepting applications" notice instead of the form.
 
-## Out of scope (parked)
-- Email notifications on new application (parking-lot item).
-- Fix "Add candidate" internal button (parking-lot item).
-- Portal load speed-up (parking-lot item).
+## Out of scope (deferred)
 
-Ready to switch to build mode and fire the migration + code together?
+- Full edit of all ad fields (only close/reopen for now)
+- Add Candidate fix (#3), portal load speedup (#5), email notifications (#4) — next pass
