@@ -24,7 +24,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Plus } from "lucide-react";
+import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 
 
 const clientsQuery = queryOptions({
