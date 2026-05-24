@@ -66,10 +66,10 @@ function LoginPage() {
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/portal`,
+        redirect_uri: `${window.location.origin}${destination}`,
       });
       if (result.error) throw result.error;
-      if (!result.redirected) navigate({ to: "/portal" });
+      if (!result.redirected) window.location.href = destination;
     } catch (err: any) {
       toast.error(err?.message || "Google sign-in failed");
       setLoading(false);
