@@ -698,8 +698,7 @@ function ResumeLink({ path }: { path: string | null }) {
     if (busy) return;
     setBusy(true);
     try {
-      const { url } = await getResumeSignedUrl({ data: { path: path! } });
-      window.open(url, "_blank");
+      await openResumeInNewTab(path!);
     } catch (e: any) {
       toast.error(e?.message || "Could not open resume");
     } finally {
