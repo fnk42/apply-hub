@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { getMyRoles, getPortalShell } from "@/lib/candidates.functions";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/portal/AppSidebar";
+import { NotificationBell } from "@/components/portal/NotificationBell";
 
 export const Route = createFileRoute("/_authenticated/portal")({
   beforeLoad: async () => {
     const { roles } = await getMyRoles();
     const ok =
       roles.includes("admin") ||
-      roles.includes("recruiter") ||
       roles.includes("member") ||
       roles.includes("client");
     if (!ok) throw redirect({ to: "/unauthorized" });
