@@ -1,115 +1,92 @@
-# Job ad detail + auth cleanup + roles & permissions
+# Auth hardening + Clients overview + click-cycle payment status
 
-Five changes. No DB schema migrations (one data-only role update). No changes to the public apply flow.
+## Bundle A — Restore Google sign-in safely + reset password
 
----
+**Allowed domains:** `goldenpipitrecruiting.com` (internal), `mpshahhospital.org` (client).
 
-## 1. Click-to-cycle Fit (no detail page open)
+**Layered guardrails:**
 
-In `src/routes/_authenticated.portal.jobs.$slug.tsx`:
-- Wrap the Fit cell in a `<button>` with `onClick` + `stopPropagation` so the row no longer navigates from that cell.
-- Cycle: `unrated` → `strong` → `medium` → `weak` → `unrated`.
-- On click: call `updateCandidate({ data: { id, patch: { fit: next } } })`, then invalidate `["candidates"]`. Toast on failure.
-- Visual: keep `FitBadge` colors; add `cursor-pointer`, hover ring, `title="Click to cycle fit"`.
+1. **`allowed_emails` table** (admin-only RLS):
+   ```
+   email citext primary key
+   role  app_role not null     -- 'admin' | 'member' | 'client'
+   client_id uuid null         -- required when role='client'
+   invited_by uuid, created_at timestamptz
+   ```
+   Seed `felix@goldenpipitrecruiting.com` → admin.
 
-Row navigation still works from Name / Date / YOE. Resume / Stage / Shortlist cells already stop propagation.
+2. **Replace `handle_new_user()` trigger** — runs on every new `auth.users` row:
+   - Reject if email domain ∉ allowed list → `RAISE EXCEPTION 'Access is invite-only'`.
+   - Reject if email ∉ `allowed_emails` → same exception (no session ever issued).
+   - Otherwise insert matching `user_roles` row. If role='client', set `clients.auth_user_id` for the linked client.
 
----
+3. **Client-side post-OAuth guard** in `/login`: after Google returns, read `session.user.email`; if domain not allowed → `signOut()` + toast.
 
-## 2. Add candidate → always lands in "Sourced"
+4. **Route guards:**
+   - `/portal/*` — admin OR member OR client (existing). Clients sign in and land here; RLS scopes them to their own job ads and candidates.
+   - `/portal/clients`, `/portal/admin`, `/portal/settings` — admin only (already enforced).
+   - `/client/*` — admin only (admin preview tooling).
 
-a) **"Not working"** — likely RLS: account currently has no `member`/`admin` role. Resolved by the role grant in §4 below.
+5. **Re-enable Google** via `supabase--configure_social_auth providers: ["google"]`; keep email/password fallback. Re-add Google button to `/login`.
 
-b) **Force Sourced stage** — in `createCandidate` (`src/lib/candidates.functions.ts`): look up the stage row for this `job_ad_id` where `legacy_status = 'sourced'`, fall back to position-1. Set `stage_id` to that row and `pipeline_status = 'sourced'`.
+6. **Password reset** — prompt for `ADMIN_RESET_PASSWORD` secret, run one-off `supabaseAdmin.auth.admin.updateUserById` for `felix@goldenpipitrecruiting.com`, then delete the secret.
 
----
-
-## 3. Replace Inbound / Sourced tabs with All / Strong fit / Shortlist
-
-In `src/routes/_authenticated.portal.jobs.$slug.tsx`:
-- Tabs: **All candidates** (no filter), **Strong fit** (`fit === "strong"`), **Shortlist** (`shortlisted === true`). Pill counts update accordingly.
-- Remove the standalone **Fit** and **Shortlist** dropdowns (now tabs).
-- Keep: search + Stage dropdown.
-- State `tab: "all" | "strong" | "shortlist"`. Empty-state copy adjusts per tab.
-
----
-
-## 4. Remove Google sign-in (email/password only)
-
-In `src/routes/login.tsx`:
-- Delete the "Continue with Google" button, `handleGoogle`, the `lovable` import, the "or email" divider, and the `POST_LOGIN_KEY` sessionStorage dance (only used for the OAuth roundtrip).
-- Keep email/password and the "Access is invite-only" helper text.
-
-Disable Google at the provider level: call `configure_social_auth` with `disable_providers: ["google"]` so deep links / stale tabs can't initiate OAuth.
-
-Allowlist enforcement: already handled — `handle_new_user()` grants nothing, `/portal` guard + RLS block any account without a role. Admins grant access via Settings → Team members.
+7. **Team & access page** — Allowed-emails CRUD section. When role='client', a dropdown picks which client they belong to.
 
 ---
 
-## 5. Role management UI + permission model
+## Bundle B — Clients overview (admin-only)
 
-### 5a. UI — already exists, light polish only
+Data model already supports "one client → many job ads → clients see only their candidates" via existing `job_ads.client_id` + RLS. **No category field** (per your instruction). **No schema change.**
 
-`src/routes/_authenticated.portal.settings.tsx` already lists internal users (email, role, last sign-in), supports invite, change role (admin ↔ member), and remove. No new routes needed.
+### Admin overview at `/portal/clients`
+Extend `listClients` (admin-only server fn) to return per-client derived metrics:
+- **Live roles**: `SUM(roles_count)` over `job_ads` where `status='live'`.
+- **Open ads / total ads** counts.
+- **Expected revenue (KES)**: `SUM(payments.amount)` where status in (`pending`,`paid`).
+- **Collected (KES)**: `SUM(payments.amount)` where status='paid'.
+- **Candidates this month**.
 
-Tweaks:
-- Add a **Status** column: "Active" (has logged in) vs "Pending" (never signed in — `last_sign_in_at IS NULL`). Display-only badge derived from existing data; no schema change.
-- Add a one-line legend under the table explaining what each role can do (mirrors §5c).
-- Rename page heading from "Settings" to "Team & access" so it's discoverable.
-- Sidebar entry already exists; verify the label reads "Team".
+Table gains columns: Live roles · Open ads · Expected (KES) · Collected (KES). Plus search by name. Row click → new `/portal/clients/$id` detail page (header, job ads table, payments table, pipeline summary, editable notes).
 
-Backed by existing `listInternalUsers`, `inviteInternalUser`, `setUserRole`, `removeInternalUser` — no new server fns.
+### Client-facing view (unchanged)
+Sign in → `/portal` → sidebar lists only their live job ads (RLS) → click ad → manage their candidates (stage / fit / shortlist / notes / CV download per role permissions).
 
-### 5b. Grant your account a role now
+---
 
-Data-only insert (no schema change):
-```sql
-INSERT INTO user_roles (user_id, role)
-SELECT id, 'admin' FROM auth.users WHERE email = 'felix@goldenpipitrecruiting.com'
-ON CONFLICT (user_id, role) DO NOTHING;
-INSERT INTO user_roles (user_id, role)
-SELECT id, 'member' FROM auth.users WHERE email = 'felix@goldenpipitrecruiting.com'
-ON CONFLICT (user_id, role) DO NOTHING;
-```
-This unblocks Add candidate (§2a) and all member actions immediately.
+## Bundle C — Click-cycle payment status (Admin → Payments)
 
-### 5c. Permission model — enforced in server fns + RLS
+Mirror the Fit click-cycle pattern from the candidates table.
 
-| Action | Member | Admin |
-|---|---|---|
-| View candidates & job ads | ✅ | ✅ |
-| Change pipeline stage / status | ✅ | ✅ |
-| Change fit (click-to-cycle) | ✅ | ✅ |
-| Toggle shortlist | ✅ | ✅ |
-| Edit recruiter notes | ✅ | ✅ |
-| Download an individual CV | ✅ | ✅ |
-| Add candidate manually | ❌ | ✅ |
-| Delete candidate | ❌ | ✅ |
-| Bulk export / download all data | ❌ | ✅ |
-| Create / close / edit job ads | ❌ | ✅ |
-| Manage clients | ❌ | ✅ |
-| Manage team (invite / role / remove) | ❌ | ✅ |
-| Manage payments & app settings | ❌ | ✅ |
+In `src/routes/_authenticated.portal.admin.tsx` (payments table):
+- Replace the status dropdown with a `<PaymentStatusBadge>` button.
+- **Cycle:** `pending` → `paid` → `void` → `pending`.
+- On click: call `setPaymentStatus({ id, status: next })`, invalidate `["payments"]`, toast on failure. `stopPropagation` so it doesn't trigger row navigation.
+- Visual: colored pill (`pending` muted/amber, `paid` emerald, `void` red), `cursor-pointer`, hover ring, `title="Click to cycle status"`.
 
-Enforcement points:
-- **Server fns** — `createCandidate`, `createJobAd`, `closeJobAd`, `reopenJobAd`, `updateJobAd`, anything client-mutating, and any future "export all" fn get an `assertAdmin` gate (same helper already used in `admin.functions.ts`). `deleteCandidate` and team-management fns already gate on admin.
-- **`updateCandidate`** (stage/fit/shortlist/notes) stays open to both roles — RLS `recruiters update applications` already allows admin+member.
-- **UI** — buttons hidden for members: "Add candidate", "Create job ad", "Close/Reopen", "Delete", any future "Export all". Members still see the rest. Uses the existing `isAdmin` flag pattern (`rolesData.roles.includes("admin")`).
-- **Single-CV download** — uses the existing per-row resume link, available to both roles. No "download all CVs" button is exposed to members.
-
-No RLS migration needed: current policies already split admin-only writes (job_ads, clients, payments, app_settings, user_roles) from recruiter-or-admin writes (applications). Server-fn gates cover the few cases not naturally captured by RLS (e.g. `createCandidate` blocking members).
+Server fn: add `setPaymentStatus` in `src/lib/admin.functions.ts` (admin-gated, validates enum, sets `paid_at = now()` when moving to `paid`, clears it otherwise). Replaces/augments the existing `markPaymentPaid` + `voidPayment` pair (those can stay or be removed — `setPaymentStatus` supersedes them).
 
 ---
 
 ## Files touched
 
-- `src/routes/_authenticated.portal.jobs.$slug.tsx` — §1, §3, hide admin-only buttons for members.
-- `src/lib/candidates.functions.ts` — §2b, admin gate on `createCandidate`.
-- `src/lib/jobs.functions.ts` — admin gate on create/close/reopen/update (verify; add where missing).
-- `src/routes/login.tsx` — §4.
-- `src/routes/_authenticated.portal.settings.tsx` — §5a polish (Status column, legend, heading).
-- One social-auth provider call (disable `google`).
-- One data-only role insert for your account.
+**Bundle A**
+- Migration: create `allowed_emails` + RLS + replace `handle_new_user()`.
+- Data insert: seed felix into `allowed_emails`.
+- `supabase--configure_social_auth providers: ["google"]`.
+- `src/routes/login.tsx` — Google button + post-OAuth domain check.
+- `src/lib/team.functions.ts` (new) — list/add/remove allowed emails.
+- `src/routes/_authenticated.portal.settings.tsx` — Allowed emails section.
+- One-off password reset script + secret prompt/delete.
 
-No changes to `/apply/$slug`, public submission, RLS schema, storage policies, or the role/permission database structure.
+**Bundle B**
+- `src/lib/candidates.functions.ts` — extend `listClients` with derived metrics; add `getClientDetail`.
+- `src/routes/_authenticated.portal.clients.tsx` — new columns + search.
+- `src/routes/_authenticated.portal.clients.$id.tsx` (new) — admin client detail page.
 
+**Bundle C**
+- `src/lib/admin.functions.ts` — add `setPaymentStatus` (admin-gated).
+- `src/routes/_authenticated.portal.admin.tsx` — replace status dropdown with click-cycle pill.
+- `src/components/portal/Badges.tsx` — add `PaymentStatusBadge` (mirrors `FitBadge` styling).
+
+No changes to public apply flow, RLS on `applications`, or the client-facing portal layout.
