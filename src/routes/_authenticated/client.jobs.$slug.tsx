@@ -122,6 +122,14 @@ function ClientJobAdView() {
     return true;
   });
 
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [tab, stageFilter, search]);
+  const totalRows = rows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   const daysLive = ad.authorized_at
     ? Math.max(
         0,
