@@ -507,7 +507,7 @@ function JobAdDetailPage() {
                 <TableRow
                   key={c.id}
                   className="cursor-pointer"
-                  onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
+                  onClick={() => navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })}
                 >
                   <TableCell>
                     <div className="flex flex-col">
