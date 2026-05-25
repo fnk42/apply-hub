@@ -287,12 +287,6 @@ export const inviteClient = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!roleRow) throw new Error("Only admins can invite clients.");
 
-    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
-    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
-      throw new Error(
-        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
-      );
-    }
 
     // Pre-register on allowlist so the new-user trigger admits this email.
     const { error: allowErr } = await supabaseAdmin
