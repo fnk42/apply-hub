@@ -658,7 +658,132 @@ function JobAdDetailPage() {
           </div>
         )}
       </div>
+
+      <EditJobAdDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        ad={ad}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["job-ad", slug] })}
+      />
     </div>
+  );
+}
+
+function EditJobAdDialog({
+  open,
+  onOpenChange,
+  ad,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  ad: {
+    id: string;
+    title: string;
+    jd_text: string | null;
+    jd_url: string | null;
+    linkedin_job_url: string | null;
+    roles_count: number;
+    start_date: string | null;
+    is_billable: boolean;
+    posting_fee: number | null;
+  };
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(ad.title);
+  const [jdText, setJdText] = useState(ad.jd_text ?? "");
+  const [jdUrl, setJdUrl] = useState(ad.jd_url ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(ad.linkedin_job_url ?? "");
+  const [rolesCount, setRolesCount] = useState(ad.roles_count);
+  const [startDate, setStartDate] = useState(ad.start_date ?? "");
+  const [isBillable, setIsBillable] = useState(ad.is_billable);
+  const [postingFee, setPostingFee] = useState<string>(ad.posting_fee != null ? String(ad.posting_fee) : "");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) { toast.error("Title is required"); return; }
+    setBusy(true);
+    try {
+      await updateJobAd({
+        data: {
+          id: ad.id,
+          patch: {
+            title: title.trim(),
+            jd_text: jdText.trim() || null,
+            jd_url: jdUrl.trim() || null,
+            linkedin_job_url: linkedinUrl.trim() || null,
+            roles_count: rolesCount,
+            start_date: startDate || null,
+            is_billable: isBillable,
+            posting_fee: postingFee === "" ? null : parseInt(postingFee, 10),
+          },
+        },
+      });
+      toast.success("Ad updated");
+      onSaved();
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader><DialogTitle>Edit job ad</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-ad-title">Title</Label>
+            <Input id="edit-ad-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="edit-ad-roles">Roles</Label>
+              <Input id="edit-ad-roles" type="number" min={1} value={rolesCount}
+                onChange={(e) => setRolesCount(Math.max(1, parseInt(e.target.value || "1", 10)))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-ad-start">Start date</Label>
+              <Input id="edit-ad-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ad-jdurl">JD URL</Label>
+            <Input id="edit-ad-jdurl" type="url" value={jdUrl} onChange={(e) => setJdUrl(e.target.value)} placeholder="https://…" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ad-li">LinkedIn job URL</Label>
+            <Input id="edit-ad-li" type="url" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} placeholder="https://www.linkedin.com/jobs/…" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ad-jd">JD text</Label>
+            <Textarea id="edit-ad-jd" rows={8} value={jdText} onChange={(e) => setJdText(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              id="edit-ad-billable"
+              type="checkbox"
+              checked={isBillable}
+              onChange={(e) => setIsBillable(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="edit-ad-billable">Billable</Label>
+          </div>
+          {isBillable && (
+            <div className="space-y-2">
+              <Label htmlFor="edit-ad-fee">Posting fee (KES)</Label>
+              <Input id="edit-ad-fee" type="number" min={0} value={postingFee}
+                onChange={(e) => setPostingFee(e.target.value)} placeholder="35000" />
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
