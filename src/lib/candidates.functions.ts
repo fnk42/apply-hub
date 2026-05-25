@@ -287,6 +287,27 @@ export const inviteClient = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!roleRow) throw new Error("Only admins can invite clients.");
 
+    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
+    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
+      throw new Error(
+        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
+      );
+    }
+
+    // Pre-register on allowlist so the new-user trigger admits this email.
+    const { error: allowErr } = await supabaseAdmin
+      .from("allowed_emails")
+      .upsert(
+        {
+          email: data.email.toLowerCase(),
+          role: "client",
+          client_id: data.client_id,
+          invited_by: userId,
+        },
+        { onConflict: "email" },
+      );
+    if (allowErr) throw new Error(allowErr.message);
+
     const { data: invited, error: invErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     let authUserId = invited?.user?.id ?? null;
