@@ -617,11 +617,12 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         const s = stageById.get(a.stage_id)!;
         key = s.legacy_status ?? s.label;
       } else if (a.pipeline_status) {
-        key = a.pipeline_status;
-        if (!funnelMap.has(key)) {
-          funnelMap.set(key, {
-            key,
-            label: key.replace(/_/g, " "),
+        const k: string = a.pipeline_status;
+        key = k;
+        if (!funnelMap.has(k)) {
+          funnelMap.set(k, {
+            key: k,
+            label: k.replace(/_/g, " "),
             position: 99,
             count: 0,
           });
