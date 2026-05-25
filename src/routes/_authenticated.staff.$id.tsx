@@ -182,9 +182,43 @@ function CandidateDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/staff/candidates" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to candidates
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/staff/candidates" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back to candidates
+        </Link>
+        {from && position && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => gotoSibling(prevId)}
+              disabled={!prevId}
+              title="Previous candidate (←)"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-input transition-colors",
+                prevId ? "hover:bg-accent hover:text-accent-foreground" : "cursor-not-allowed opacity-40",
+              )}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="tabular-nums text-xs text-muted-foreground">
+              {position.idx} / {position.total}
+            </span>
+            <button
+              type="button"
+              onClick={() => gotoSibling(nextId)}
+              disabled={!nextId}
+              title="Next candidate (→)"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-input transition-colors",
+                nextId ? "hover:bg-accent hover:text-accent-foreground" : "cursor-not-allowed opacity-40",
+              )}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
