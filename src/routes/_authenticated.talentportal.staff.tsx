@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { shellQuery } from "./_authenticated.talentportal";
+import { shellQuery } from "@/lib/portal-shell";
 
 export const Route = createFileRoute("/_authenticated/talentportal/staff")({
   beforeLoad: async ({ context }) => {

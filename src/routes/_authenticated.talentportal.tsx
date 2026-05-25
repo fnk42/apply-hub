@@ -1,15 +1,9 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { getPortalShell } from "@/lib/candidates.functions";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { shellQuery } from "@/lib/portal-shell";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/portal/AppSidebar";
 import { NotificationBell } from "@/components/portal/NotificationBell";
-
-export const shellQuery = queryOptions({
-  queryKey: ["portal-shell"],
-  queryFn: () => getPortalShell(),
-  staleTime: 30_000,
-});
 
 export const Route = createFileRoute("/_authenticated/talentportal")({
   beforeLoad: async ({ context }) => {
