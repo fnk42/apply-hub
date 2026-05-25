@@ -397,7 +397,8 @@ function NameCell({
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        className="inline-flex items-center gap-1 font-medium text-foreground transition-colors hover:text-[#0A66C2] hover:underline"
+        title="Open LinkedIn profile"
       >
         {name}
         <ExternalLink className="h-3 w-3" />
