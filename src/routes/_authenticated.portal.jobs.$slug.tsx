@@ -529,19 +529,31 @@ function NameCell({
   const isUrl = linkedinUrl && /^https?:\/\//i.test(linkedinUrl);
   if (isUrl) {
     return (
-      <a
-        href={linkedinUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          openExternal(linkedinUrl!);
+        }}
         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
       >
         {name}
         <ExternalLink className="h-3 w-3" />
-      </a>
+      </button>
     );
   }
   return <span className="font-medium">{name}</span>;
+}
+
+function openExternal(url: string) {
+  try {
+    const top = window.top ?? window;
+    const w = top.open(url, "_blank", "noopener,noreferrer");
+    if (w) return;
+  } catch {
+    // fall through
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function ShareLinkCard({ slug }: { slug: string }) {
@@ -611,14 +623,13 @@ function JdPanel({
         <h2 className="font-serif text-xl tracking-tight">Job description</h2>
         <div className="flex items-center gap-2">
           {ad.linkedin_job_url && (
-            <a
-              href={ad.linkedin_job_url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => openExternal(ad.linkedin_job_url!)}
               className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
             >
               <Linkedin className="h-3.5 w-3.5" /> LinkedIn
-            </a>
+            </button>
           )}
           {ad.jd_url && (
             <a

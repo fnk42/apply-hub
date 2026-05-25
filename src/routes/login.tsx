@@ -46,11 +46,16 @@ function LoginPage() {
     if (destination && destination !== "/portal") return destination;
     try {
       const { roles } = await getMyRoles();
-      if (roles.includes("admin") || roles.includes("member")) return "/portal";
-      if (roles.includes("client")) return "/portal/jobs/business-development-manager";
+      if (
+        roles.includes("admin") ||
+        roles.includes("member") ||
+        roles.includes("client")
+      ) {
+        return "/portal/jobs/business-development-manager";
+      }
       return "/unauthorized";
     } catch {
-      return "/portal";
+      return "/portal/jobs/business-development-manager";
     }
   }, [destination]);
 
