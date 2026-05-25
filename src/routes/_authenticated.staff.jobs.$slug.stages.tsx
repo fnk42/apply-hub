@@ -35,11 +35,11 @@ const rolesQuery = queryOptions({
   queryFn: () => getMyRoles(),
 });
 
-export const Route = createFileRoute("/_authenticated/portal/jobs/$slug/stages")({
+export const Route = createFileRoute("/_authenticated/staff/jobs/$slug/stages")({
   loader: async ({ context, params }) => {
     const { roles } = await context.queryClient.ensureQueryData(rolesQuery);
     if (!roles.includes("admin")) {
-      throw redirect({ to: "/portal/jobs/$slug", params: { slug: params.slug } });
+      throw redirect({ to: "/staff/jobs/$slug", params: { slug: params.slug } });
     }
     const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
     if (!ad) throw notFound();
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/portal/jobs/$slug/stages")
   notFoundComponent: () => (
     <div className="mx-auto max-w-3xl px-6 py-16 text-center">
       <h1 className="font-serif text-3xl">Job ad not found</h1>
-      <Link to="/portal/jobs" className="mt-4 inline-block text-primary hover:underline">
+      <Link to="/staff/jobs" className="mt-4 inline-block text-primary hover:underline">
         Back to all ads
       </Link>
     </div>
@@ -140,7 +140,7 @@ function StagesPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <Link
-        to="/portal/jobs/$slug"
+        to="/staff/jobs/$slug"
         params={{ slug }}
         className="text-sm text-muted-foreground hover:text-foreground"
       >

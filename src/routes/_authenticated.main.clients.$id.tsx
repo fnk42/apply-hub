@@ -9,7 +9,7 @@ function formatKES(n: number | null | undefined) {
   return `KES ${Number(n).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
 }
 
-export const Route = createFileRoute("/_authenticated/portal/clients/$id")({
+export const Route = createFileRoute("/_authenticated/main/clients/$id")({
   beforeLoad: async () => {
     const { roles } = await getMyRoles();
     if (!roles.includes("admin")) throw redirect({ to: "/portal" });
@@ -46,7 +46,7 @@ function ClientDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/portal/clients" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/main/clients" className="text-sm text-muted-foreground hover:text-foreground">
         ← Clients
       </Link>
       <h1 className="mt-2 font-serif text-4xl tracking-tight">{client.name}</h1>
@@ -77,7 +77,7 @@ function ClientDetailPage() {
             {job_ads.map((a) => (
               <TableRow key={a.id}>
                 <TableCell>
-                  <Link to="/portal/jobs/$slug" params={{ slug: a.slug }} className="font-medium hover:underline">
+                  <Link to="/staff/jobs/$slug" params={{ slug: a.slug }} className="font-medium hover:underline">
                     {a.title}
                   </Link>
                 </TableCell>

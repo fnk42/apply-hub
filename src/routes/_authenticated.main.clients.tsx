@@ -35,7 +35,7 @@ const clientsQuery = queryOptions({
   queryFn: () => listClients(),
 });
 
-export const Route = createFileRoute("/_authenticated/portal/clients")({
+export const Route = createFileRoute("/_authenticated/main/clients")({
   beforeLoad: async () => {
     const { roles } = await getMyRoles();
     if (!roles.includes("admin")) throw redirect({ to: "/portal" });
@@ -121,7 +121,7 @@ function ClientsPage() {
             {rows.map((c: any) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">
-                  <Link to="/portal/clients/$id" params={{ id: c.id }} className="hover:underline">
+                  <Link to="/main/clients/$id" params={{ id: c.id }} className="hover:underline">
                     {c.name}
                   </Link>
                 </TableCell>

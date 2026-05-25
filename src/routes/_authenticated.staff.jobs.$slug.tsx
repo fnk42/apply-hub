@@ -86,13 +86,13 @@ const rolesQuery = queryOptions({
 });
 
 
-export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
+export const Route = createFileRoute("/_authenticated/staff/jobs/$slug")({
   beforeLoad: async ({ params }) => {
     const { roles } = await getMyRoles();
     const isAdmin = roles.includes("admin");
     if (!isAdmin && params.slug !== "business-development-manager") {
       throw redirect({
-        to: "/portal/jobs/$slug",
+        to: "/staff/jobs/$slug",
         params: { slug: "business-development-manager" },
       });
     }
@@ -110,7 +110,7 @@ export const Route = createFileRoute("/_authenticated/portal/jobs/$slug")({
   notFoundComponent: () => (
     <div className="mx-auto max-w-3xl px-6 py-16 text-center">
       <h1 className="font-serif text-3xl">Job ad not found</h1>
-      <Link to="/portal/jobs" className="mt-4 inline-block text-primary hover:underline">
+      <Link to="/staff/jobs" className="mt-4 inline-block text-primary hover:underline">
         Back to all ads
       </Link>
     </div>
@@ -277,14 +277,14 @@ function JobAdDetailPage() {
             )}
             {isAdmin && (
               <Button asChild variant="outline">
-                <Link to="/portal/jobs/$slug/stages" params={{ slug }}>
+                <Link to="/staff/jobs/$slug/stages" params={{ slug }}>
                   <Settings2 className="mr-1 h-4 w-4" /> Stages
                 </Link>
               </Button>
             )}
             {isAdmin && (
               <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-                <Link to="/portal/jobs/$slug/add-candidate" params={{ slug }}>
+                <Link to="/staff/jobs/$slug/add-candidate" params={{ slug }}>
                   <Plus className="mr-1 h-4 w-4" /> Add candidate
                 </Link>
               </Button>

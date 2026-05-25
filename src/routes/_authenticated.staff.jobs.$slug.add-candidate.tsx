@@ -16,7 +16,7 @@ const adQuery = (slug: string) =>
     queryFn: () => getJobAdBySlug({ data: { slug } }),
   });
 
-export const Route = createFileRoute("/_authenticated/portal/jobs/$slug/add-candidate")({
+export const Route = createFileRoute("/_authenticated/staff/jobs/$slug/add-candidate")({
   loader: async ({ context, params }) => {
     const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
     if (!ad) throw notFound();
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/portal/jobs/$slug/add-cand
   notFoundComponent: () => (
     <div className="mx-auto max-w-3xl px-6 py-16 text-center">
       <h1 className="font-serif text-3xl">Job ad not found</h1>
-      <Link to="/portal/jobs" className="mt-4 inline-block text-primary hover:underline">
+      <Link to="/staff/jobs" className="mt-4 inline-block text-primary hover:underline">
         Back to all ads
       </Link>
     </div>
@@ -95,14 +95,14 @@ function AddCandidatePage() {
       await navigate({ to: "/portal/$id", params: { id: newId! } });
     } catch (err) {
       console.error("navigate to candidate failed, falling back", err);
-      navigate({ to: "/portal/jobs/$slug", params: { slug } });
+      navigate({ to: "/staff/jobs/$slug", params: { slug } });
     }
   }
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <Link
-        to="/portal/jobs/$slug"
+        to="/staff/jobs/$slug"
         params={{ slug }}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
@@ -173,7 +173,7 @@ function AddCandidatePage() {
             {submitting ? "Adding…" : "Add candidate"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link to="/portal/jobs/$slug" params={{ slug }}>
+            <Link to="/staff/jobs/$slug" params={{ slug }}>
               Cancel
             </Link>
           </Button>

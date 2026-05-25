@@ -37,7 +37,7 @@ const candidateQuery = (id: string) =>
     queryFn: () => getCandidate({ data: { id } }),
   });
 
-export const Route = createFileRoute("/_authenticated/portal/$id")({
+export const Route = createFileRoute("/_authenticated/staff/$id")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(candidateQuery(params.id)),
   component: CandidateDetailPage,
@@ -67,7 +67,7 @@ function CandidateDetailPage() {
       toast.success("Candidate deleted");
       qc.invalidateQueries({ queryKey: ["candidates"] });
       qc.invalidateQueries({ queryKey: ["portal-shell"] });
-      navigate({ to: "/portal/jobs" });
+      navigate({ to: "/staff/jobs" });
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete");
       setDeleting(false);
@@ -124,7 +124,7 @@ function CandidateDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/portal/candidates" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/staff/candidates" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to candidates
       </Link>
 
