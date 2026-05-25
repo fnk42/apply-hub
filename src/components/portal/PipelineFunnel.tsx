@@ -30,7 +30,7 @@ export function PipelineFunnel({ stages }: { stages: Stage[] }) {
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
-                    stageColor[s.key] ?? "bg-slate-400",
+                    STAGE_BAR_COLORS[s.key] ?? "bg-slate-400",
                   )}
                   style={{ width: `${Math.max(pct, 2)}%` }}
                 />
