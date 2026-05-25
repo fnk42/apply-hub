@@ -541,7 +541,7 @@ function JobAdDetailPage() {
                     <button
                       type="button"
                       onClick={() => bumpFit(c.id, c.fit)}
-                      title="1 click = weak, 2 = medium, 3 = strong"
+                      title="Click to cycle: unrated → weak → medium → strong"
                       className="cursor-pointer rounded-full ring-offset-background transition hover:ring-2 hover:ring-ring hover:ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <FitBadge value={c.fit} />
