@@ -578,10 +578,77 @@ function JobAdDetailPage() {
                       />
                     </button>
                   </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()} className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="More actions"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
+                        >
+                          Open candidate
+                        </DropdownMenuItem>
+                        {c.linkedin_url && /^https?:\/\//i.test(c.linkedin_url) && (
+                          <DropdownMenuItem onClick={() => openExternal(c.linkedin_url!)}>
+                            Open LinkedIn
+                          </DropdownMenuItem>
+                        )}
+                        {(c as any).resume_url && (
+                          <DropdownMenuItem
+                            onClick={() => void openResumeInNewTab((c as any).resume_url)}
+                          >
+                            Open resume
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => toggleShortlist(c.id, !!c.shortlisted)}>
+                          {c.shortlisted ? "Remove from shortlist" : "Add to shortlist"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => void clearFit(c.id, c.fit)}>
+                          Clear fit rating
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {totalRows > PAGE_SIZE && (
+          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+            <span className="text-muted-foreground">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalRows)} of {totalRows}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Prev
+              </Button>
+              <span className="text-muted-foreground">
+                Page {safePage} of {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
