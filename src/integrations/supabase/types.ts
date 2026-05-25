@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      allowed_emails: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          email: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          email: string
+          invited_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          email?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allowed_emails_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string
