@@ -254,6 +254,11 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
+    const redirectBaseUrl = (
+      process.env.SITE_URL ||
+      process.env.PUBLIC_SITE_URL ||
+      "https://gptalentportal.com"
+    ).replace(/\/$/, "");
 
 
     // Pre-register on allowlist so the new-user trigger admits this email.
@@ -270,7 +275,9 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
     if (allowErr) throw new Error(allowErr.message);
 
     const { data: invited, error: invErr } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
+      await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
+        redirectTo: `${redirectBaseUrl}/reset-password`,
+      });
     let authUserId = invited?.user?.id ?? null;
     let alreadyRegistered = false;
     if (invErr) {
@@ -289,12 +296,9 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
     }
     if (alreadyRegistered) {
       // User already exists — send a password reset so they get a fresh link.
-      const siteUrl =
-        process.env.SITE_URL ||
-        "https://joy-apply-engine.lovable.app";
       const { error: resetErr } = await supabaseAdmin.auth.resetPasswordForEmail(
         data.email,
-        { redirectTo: `${siteUrl}/reset-password` },
+        { redirectTo: `${redirectBaseUrl}/reset-password` },
       );
       if (resetErr) throw new Error(resetErr.message);
     }
