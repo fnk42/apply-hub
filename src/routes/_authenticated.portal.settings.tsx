@@ -56,9 +56,9 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <h1 className="font-serif text-4xl tracking-tight text-foreground">Settings</h1>
+      <h1 className="font-serif text-4xl tracking-tight text-foreground">Team & access</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {isAdmin ? "Manage authorized users." : "Your workspace access."}
+        {isAdmin ? "Invite, manage, and revoke portal access." : "Your workspace access."}
       </p>
 
       {isAdmin ? (
@@ -70,6 +70,19 @@ function SettingsPage() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function RoleLegend() {
+  return (
+    <div className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+      <p>
+        <span className="font-semibold text-foreground">Admin</span> — full access: add candidates, create/close job ads, manage clients, delete records, manage team, export data.
+      </p>
+      <p className="mt-1">
+        <span className="font-semibold text-foreground">Member</span> — change stage, fit, shortlist, and notes; download individual CVs. Cannot add candidates, manage clients/job ads, or export bulk data.
+      </p>
     </div>
   );
 }
@@ -120,6 +133,7 @@ function UsersAdmin() {
             <TableRow>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Last sign-in</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
@@ -127,6 +141,7 @@ function UsersAdmin() {
           <TableBody>
             {data.users.map((u) => {
               const currentRole = u.roles.includes("admin") ? "admin" : "member";
+              const isActive = !!u.last_sign_in_at;
               return (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.email}</TableCell>
@@ -144,6 +159,18 @@ function UsersAdmin() {
                         <SelectItem value="member">Member</SelectItem>
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
+                        (isActive
+                          ? "bg-emerald-500/10 text-emerald-700"
+                          : "bg-amber-500/10 text-amber-700")
+                      }
+                    >
+                      {isActive ? "Active" : "Pending"}
+                    </span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {u.last_sign_in_at
@@ -166,6 +193,7 @@ function UsersAdmin() {
           </TableBody>
         </Table>
       </div>
+      <RoleLegend />
     </section>
   );
 }

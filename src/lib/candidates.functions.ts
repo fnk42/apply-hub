@@ -609,22 +609,41 @@ export const createCandidate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => createInput.parse(data))
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
-    // Default stage = position 1 for this ad
-    const { data: firstStage } = await supabase
+    const { supabase, userId } = context;
+    // Admin gate: members cannot add candidates manually
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Only admins can add candidates.");
+
+    // Force "Sourced" stage for manually-added candidates
+    const { data: sourcedStage } = await supabase
       .from("job_ad_stages")
       .select("id, legacy_status")
       .eq("job_ad_id", data.job_ad_id)
-      .order("position", { ascending: true })
-      .limit(1)
+      .eq("legacy_status", "sourced")
       .maybeSingle();
+    let stage = sourcedStage;
+    if (!stage) {
+      const { data: firstStage } = await supabase
+        .from("job_ad_stages")
+        .select("id, legacy_status")
+        .eq("job_ad_id", data.job_ad_id)
+        .order("position", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      stage = firstStage;
+    }
     const { data: row, error } = await supabase
       .from("applications")
       .insert({
         source: "manual",
         job_ad_id: data.job_ad_id,
-        stage_id: firstStage?.id ?? null,
-        pipeline_status: firstStage?.legacy_status ?? "sourced",
+        stage_id: stage?.id ?? null,
+        pipeline_status: "sourced",
         full_name: data.full_name,
         email: data.email,
         phone: data.phone || null,
