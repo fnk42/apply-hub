@@ -1,17 +1,11 @@
 import { cn } from "@/lib/utils";
+import { STAGE_BAR_COLORS } from "@/components/portal/Badges";
 
 interface Stage {
   key: string;
   label: string;
   count: number;
 }
-
-const stageColor: Record<string, string> = {
-  sourced: "bg-slate-400",
-  scheduled_interview: "bg-blue-500",
-  rejected_screening: "bg-rose-500",
-  candidate_declined: "bg-amber-500",
-};
 
 export function PipelineFunnel({ stages }: { stages: Stage[] }) {
   const total = Math.max(
