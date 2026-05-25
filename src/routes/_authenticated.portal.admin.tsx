@@ -61,6 +61,11 @@ const jobAdsQ = queryOptions({
   staleTime: 30_000,
 });
 
+const teamQ = queryOptions({
+  queryKey: ["admin-team"],
+  queryFn: () => listInternalUsers(),
+});
+
 export function formatKES(amount: number | null | undefined): string {
   if (amount == null) return "—";
   return `KES ${Number(amount).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
