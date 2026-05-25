@@ -81,11 +81,11 @@ export function AppSidebar() {
         {GROUPS.map((g) => {
           const items = ads.filter((a) => g.statuses.includes(a.status));
           if (items.length === 0) return null;
-          // Clients only ever see live ads — collapse the "Live" label
-          if (!isInternal && g.key !== "live") return null;
+          // Non-admins only see the (single) live tab; collapse labels for them.
+          if (!isAdmin && g.key !== "live") return null;
           return (
             <SidebarGroup key={g.key}>
-              {isInternal && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
+              {isAdmin && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.map((a) => (
@@ -116,7 +116,7 @@ export function AppSidebar() {
           );
         })}
 
-        {isInternal && (
+        {isAdmin && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
