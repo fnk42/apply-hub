@@ -462,3 +462,231 @@ export const removeAllowedEmail = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ============ ADMIN DASHBOARD ============
+
+function startOfWeek(d: Date) {
+  const x = new Date(d);
+  const day = x.getUTCDay(); // 0=Sun
+  const diff = (day + 6) % 7; // Monday-start
+  x.setUTCDate(x.getUTCDate() - diff);
+  x.setUTCHours(0, 0, 0, 0);
+  return x;
+}
+function startOfMonth(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+function startOfQuarter(d: Date) {
+  const q = Math.floor(d.getUTCMonth() / 3) * 3;
+  return new Date(Date.UTC(d.getUTCFullYear(), q, 1));
+}
+function startOfYear(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+}
+
+export const getAdminDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const now = new Date();
+    const weekStart = startOfWeek(now).toISOString();
+    const monthStart = startOfMonth(now).toISOString();
+    const quarterStart = startOfQuarter(now).toISOString();
+    const yearStart = startOfYear(now).toISOString();
+    const trendStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1),
+    ).toISOString();
+
+    const [
+      liveAdsRes,
+      candidatesWeekRes,
+      paidPaymentsRes,
+      stagesRes,
+      eventsRes,
+      clientsRes,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("job_ads")
+        .select("id, title, slug, status, roles_count, client_id, archived_at")
+        .eq("status", "live")
+        .is("archived_at", null),
+      supabaseAdmin
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", weekStart),
+      supabaseAdmin
+        .from("payments")
+        .select("amount, paid_at")
+        .eq("status", "paid")
+        .gte("paid_at", trendStart),
+      supabaseAdmin
+        .from("job_ad_stages")
+        .select("id, label, position, legacy_status, job_ad_id"),
+      supabaseAdmin
+        .from("application_events")
+        .select(
+          "id, application_id, actor_email, event_type, from_value, to_value, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabaseAdmin.from("clients").select("id, name"),
+    ]);
+
+    if (liveAdsRes.error) throw new Error(liveAdsRes.error.message);
+    if (paidPaymentsRes.error) throw new Error(paidPaymentsRes.error.message);
+
+    const liveAds = liveAdsRes.data ?? [];
+    const liveAdIds = liveAds.map((a) => a.id);
+
+    // Applications scoped to live ads (single read; small portal scale)
+    const appsRes = liveAdIds.length
+      ? await supabaseAdmin
+          .from("applications")
+          .select("id, job_ad_id, pipeline_status, stage_id, shortlisted")
+          .in("job_ad_id", liveAdIds)
+      : { data: [] as any[], error: null };
+    if (appsRes.error) throw new Error(appsRes.error.message);
+    const apps = appsRes.data ?? [];
+
+    // KPIs
+    const openJobs = liveAds.length;
+    const liveApplications = apps.length;
+    const shortlisted = apps.filter((a) => a.shortlisted).length;
+    const candidatesThisWeek = candidatesWeekRes.count ?? 0;
+
+    // Revenue
+    const pays = paidPaymentsRes.data ?? [];
+    const monthRevenue = pays
+      .filter((p) => p.paid_at && p.paid_at >= monthStart)
+      .reduce((s, p) => s + (p.amount ?? 0), 0);
+    const quarterRevenue = pays
+      .filter((p) => p.paid_at && p.paid_at >= quarterStart)
+      .reduce((s, p) => s + (p.amount ?? 0), 0);
+    const yearRevenue = pays
+      .filter((p) => p.paid_at && p.paid_at >= yearStart)
+      .reduce((s, p) => s + (p.amount ?? 0), 0);
+
+    // Revenue trend: trailing 12 months
+    const trendMap = new Map<string, number>();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1),
+      );
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      trendMap.set(key, 0);
+    }
+    for (const p of pays) {
+      if (!p.paid_at) continue;
+      const d = new Date(p.paid_at);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      if (trendMap.has(key)) {
+        trendMap.set(key, (trendMap.get(key) ?? 0) + (p.amount ?? 0));
+      }
+    }
+    const revenueTrend = Array.from(trendMap.entries()).map(([month, amount]) => ({
+      month,
+      amount,
+    }));
+
+    // Pipeline funnel — aggregate across live ads' stages
+    const stages = (stagesRes.data ?? []).filter((s) =>
+      liveAdIds.includes(s.job_ad_id),
+    );
+    // Group by label (default stages share names across ads)
+    const funnelMap = new Map<
+      string,
+      { key: string; label: string; position: number; count: number }
+    >();
+    // Build a quick lookup: stage_id → label/legacy_status/position
+    const stageById = new Map(stages.map((s) => [s.id, s]));
+    for (const s of stages) {
+      const k = s.legacy_status ?? s.label;
+      if (!funnelMap.has(k)) {
+        funnelMap.set(k, {
+          key: k,
+          label: s.label,
+          position: s.position,
+          count: 0,
+        });
+      }
+    }
+    for (const a of apps) {
+      let key: string | null = null;
+      if (a.stage_id && stageById.has(a.stage_id)) {
+        const s = stageById.get(a.stage_id)!;
+        key = s.legacy_status ?? s.label;
+      } else if (a.pipeline_status) {
+        key = a.pipeline_status;
+        if (!funnelMap.has(key)) {
+          funnelMap.set(key, {
+            key,
+            label: key.replace(/_/g, " "),
+            position: 99,
+            count: 0,
+          });
+        }
+      }
+      if (key && funnelMap.has(key)) {
+        funnelMap.get(key)!.count += 1;
+      }
+    }
+    const funnel = Array.from(funnelMap.values()).sort(
+      (a, b) => a.position - b.position,
+    );
+
+    // Top clients by open roles
+    const clientMap = new Map(
+      (clientsRes.data ?? []).map((c: any) => [c.id, c.name as string]),
+    );
+    const rolesByClient = new Map<string, number>();
+    for (const ad of liveAds) {
+      rolesByClient.set(
+        ad.client_id,
+        (rolesByClient.get(ad.client_id) ?? 0) + (ad.roles_count ?? 0),
+      );
+    }
+    const topClients = Array.from(rolesByClient.entries())
+      .map(([id, openRoles]) => ({
+        id,
+        name: clientMap.get(id) ?? "—",
+        openRoles,
+      }))
+      .sort((a, b) => b.openRoles - a.openRoles)
+      .slice(0, 5);
+
+    // Recent activity — enrich with candidate name
+    const events = eventsRes.data ?? [];
+    const appIds = Array.from(new Set(events.map((e) => e.application_id)));
+    let nameMap = new Map<string, string>();
+    if (appIds.length) {
+      const { data: appRows } = await supabaseAdmin
+        .from("applications")
+        .select("id, full_name")
+        .in("id", appIds);
+      nameMap = new Map((appRows ?? []).map((r: any) => [r.id, r.full_name]));
+    }
+    const recentActivity = events.map((e) => ({
+      id: e.id,
+      application_id: e.application_id,
+      candidate_name: nameMap.get(e.application_id) ?? "candidate",
+      actor_email: e.actor_email,
+      event_type: e.event_type,
+      from_value: e.from_value,
+      to_value: e.to_value,
+      created_at: e.created_at,
+    }));
+
+    return {
+      kpis: { openJobs, liveApplications, candidatesThisWeek, shortlisted },
+      revenue: {
+        month: monthRevenue,
+        quarter: quarterRevenue,
+        year: yearRevenue,
+        trend: revenueTrend,
+      },
+      funnel,
+      topClients,
+      recentActivity,
+    };
+  });
