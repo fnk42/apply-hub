@@ -158,6 +158,7 @@ function JobAdDetailPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const all = candData.candidates;
   const allCount = all.length;
