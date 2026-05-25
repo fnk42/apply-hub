@@ -24,6 +24,8 @@ import { Route as AuthenticatedPortalAdminRouteImport } from './routes/_authenti
 import { Route as AuthenticatedPortalActivityRouteImport } from './routes/_authenticated.portal.activity'
 import { Route as AuthenticatedPortalIdRouteImport } from './routes/_authenticated.portal.$id'
 import { Route as AuthenticatedPortalJobsIndexRouteImport } from './routes/_authenticated.portal.jobs.index'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as AuthenticatedPortalJobsNewRouteImport } from './routes/_authenticated.portal.jobs.new'
 import { Route as AuthenticatedPortalJobsSlugRouteImport } from './routes/_authenticated.portal.jobs.$slug'
 import { Route as AuthenticatedPortalClientsIdRouteImport } from './routes/_authenticated.portal.clients.$id'
@@ -112,6 +114,16 @@ const AuthenticatedPortalJobsIndexRoute =
     path: '/jobs/',
     getParentRoute: () => AuthenticatedPortalRoute,
   } as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedPortalJobsNewRoute =
   AuthenticatedPortalJobsNewRouteImport.update({
     id: '/jobs/new',
@@ -160,6 +172,8 @@ export interface FileRoutesByFullPath {
   '/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/portal/jobs/new': typeof AuthenticatedPortalJobsNewRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
   '/portal/jobs/$slug/add-candidate': typeof AuthenticatedPortalJobsSlugAddCandidateRoute
   '/portal/jobs/$slug/stages': typeof AuthenticatedPortalJobsSlugStagesRoute
@@ -180,6 +194,8 @@ export interface FileRoutesByTo {
   '/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/portal/jobs/new': typeof AuthenticatedPortalJobsNewRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/portal/jobs': typeof AuthenticatedPortalJobsIndexRoute
   '/portal/jobs/$slug/add-candidate': typeof AuthenticatedPortalJobsSlugAddCandidateRoute
   '/portal/jobs/$slug/stages': typeof AuthenticatedPortalJobsSlugStagesRoute
@@ -203,6 +219,8 @@ export interface FileRoutesById {
   '/_authenticated/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/_authenticated/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/_authenticated/portal/jobs/new': typeof AuthenticatedPortalJobsNewRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/_authenticated/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
   '/_authenticated/portal/jobs/$slug/add-candidate': typeof AuthenticatedPortalJobsSlugAddCandidateRoute
   '/_authenticated/portal/jobs/$slug/stages': typeof AuthenticatedPortalJobsSlugStagesRoute
@@ -226,6 +244,8 @@ export interface FileRouteTypes {
     | '/portal/clients/$id'
     | '/portal/jobs/$slug'
     | '/portal/jobs/new'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/portal/jobs/'
     | '/portal/jobs/$slug/add-candidate'
     | '/portal/jobs/$slug/stages'
@@ -246,6 +266,8 @@ export interface FileRouteTypes {
     | '/portal/clients/$id'
     | '/portal/jobs/$slug'
     | '/portal/jobs/new'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/portal/jobs'
     | '/portal/jobs/$slug/add-candidate'
     | '/portal/jobs/$slug/stages'
@@ -268,6 +290,8 @@ export interface FileRouteTypes {
     | '/_authenticated/portal/clients/$id'
     | '/_authenticated/portal/jobs/$slug'
     | '/_authenticated/portal/jobs/new'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/_authenticated/portal/jobs/'
     | '/_authenticated/portal/jobs/$slug/add-candidate'
     | '/_authenticated/portal/jobs/$slug/stages'
@@ -279,6 +303,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
   ApplySlugRoute: typeof ApplySlugRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -387,6 +413,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/jobs/'
       preLoaderRoute: typeof AuthenticatedPortalJobsIndexRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/portal/jobs/new': {
       id: '/_authenticated/portal/jobs/new'
@@ -508,6 +548,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   UnauthorizedRoute: UnauthorizedRoute,
   ApplySlugRoute: ApplySlugRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
