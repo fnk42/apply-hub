@@ -228,24 +228,41 @@ function JobAdDetailPage() {
     }
   }
 
+  async function commitFit(id: string, next: FitVal, prev: FitVal) {
+    try {
+      await updateCandidate({ data: { id, patch: { fit: next } } });
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+    } catch (e: any) {
+      qc.setQueryData(candKey, (old: any) => {
+        if (!old?.candidates) return old;
+        return {
+          ...old,
+          candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: prev } : c)),
+        };
+      });
+      toast.error(e?.message || "Failed");
+    }
+  }
+
   function bumpFit(id: string, currentFit: string) {
     const entry = clickRef.current.get(id);
     const count = (entry?.count ?? 0) + 1;
+    const prev: FitVal = (entry?.prev ?? (currentFit as FitVal));
     if (entry?.timer) clearTimeout(entry.timer);
     const next: FitVal = count === 1 ? "weak" : count === 2 ? "medium" : "strong";
-    // optimistic preview after each click
     applyOptimistic(id, next);
     const timer = setTimeout(() => {
       clickRef.current.delete(id);
-      void commitFit(id, next, currentFit as FitVal);
+      void commitFit(id, next, prev);
     }, 400);
-    clickRef.current.set(id, { count, timer });
+    clickRef.current.set(id, { count, timer, prev });
   }
 
   async function clearFit(id: string, currentFit: string) {
     applyOptimistic(id, "unrated");
     await commitFit(id, "unrated", currentFit as FitVal);
   }
+
 
 
   async function toggleShortlist(id: string, current: boolean) {
