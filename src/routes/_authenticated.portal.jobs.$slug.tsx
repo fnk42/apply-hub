@@ -134,6 +134,7 @@ function JobAdDetailPage() {
   const all = candData.candidates;
   const allCount = all.length;
   const strongCount = all.filter((c) => c.fit === "strong").length;
+  const mediumCount = all.filter((c) => c.fit === "medium").length;
   const shortlistCount = all.filter((c) => c.shortlisted).length;
 
   // Resolve a candidate's stage_id, falling back to legacy_status mapping if missing
