@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getPortalShell } from "@/lib/candidates.functions";
 
-const EMPTY_SHELL = { roles: [] as string[], ads: [] as any[] };
+const EMPTY_SHELL = { appName: "Project Dashboard", roles: [] as string[], ads: [] as any[] };
 
 export const shellQuery = queryOptions({
   queryKey: ["portal-shell"],
