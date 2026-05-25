@@ -198,7 +198,6 @@ function JobAdDetailPage() {
 
   type FitVal = "unrated" | "weak" | "medium" | "strong";
   const candKey = ["candidates", "by-ad", ad.id] as const;
-  const clickRef = useRef<Map<string, { count: number; timer: ReturnType<typeof setTimeout>; prev: FitVal }>>(new Map());
 
   function applyOptimistic(id: string, next: FitVal) {
     qc.setQueryData(candKey, (old: any) => {
@@ -209,8 +208,6 @@ function JobAdDetailPage() {
       };
     });
   }
-
-
 
   async function commitFit(id: string, next: FitVal, prev: FitVal) {
     try {
@@ -229,17 +226,11 @@ function JobAdDetailPage() {
   }
 
   function bumpFit(id: string, currentFit: string) {
-    const entry = clickRef.current.get(id);
-    const count = (entry?.count ?? 0) + 1;
-    const prev: FitVal = (entry?.prev ?? (currentFit as FitVal));
-    if (entry?.timer) clearTimeout(entry.timer);
-    const next: FitVal = count === 1 ? "weak" : count === 2 ? "medium" : "strong";
+    const order: FitVal[] = ["unrated", "weak", "medium", "strong"];
+    const prev = (order.includes(currentFit as FitVal) ? currentFit : "unrated") as FitVal;
+    const next = order[(order.indexOf(prev) + 1) % order.length];
     applyOptimistic(id, next);
-    const timer = setTimeout(() => {
-      clickRef.current.delete(id);
-      void commitFit(id, next, prev);
-    }, 400);
-    clickRef.current.set(id, { count, timer, prev });
+    void commitFit(id, next, prev);
   }
 
   async function clearFit(id: string, currentFit: string) {
