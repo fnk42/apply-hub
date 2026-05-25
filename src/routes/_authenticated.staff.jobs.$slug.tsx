@@ -343,6 +343,11 @@ function JobAdDetailPage() {
               </Button>
             )}
             {isAdmin && (
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil className="mr-1 h-4 w-4" /> Edit ad
+              </Button>
+            )}
+            {isAdmin && (
               <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
                 <Link to="/staff/jobs/$slug/add-candidate" params={{ slug }}>
                   <Plus className="mr-1 h-4 w-4" /> Add candidate
