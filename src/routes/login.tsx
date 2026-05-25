@@ -18,6 +18,8 @@ function isAllowedDomain(email: string | null | undefined) {
 
 function normalizeRedirect(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "";
+  // Never redirect back to /login itself — that causes nested redirect loops.
+  if (value === "/login" || value.startsWith("/login?") || value.startsWith("/login/")) return "";
   return value;
 }
 
