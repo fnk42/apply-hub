@@ -57,12 +57,8 @@ export function AppSidebar() {
   const roles = data?.roles ?? [];
   const isAdmin = roles.includes("admin");
   const isInternal = isAdmin || roles.includes("member");
-  // Non-admins (clients + members) only ever see the BDM tab.
-  const ads = isAdmin
-    ? allAds
-    : allAds.filter((a) => a.slug === "business-development-manager").length > 0
-      ? allAds.filter((a) => a.slug === "business-development-manager")
-      : allAds.filter((a) => a.status === "live").slice(0, 1);
+  const ads = allAds;
+
 
   return (
     <Sidebar collapsible="icon">
