@@ -202,6 +202,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          slug: string
           updated_at: string
         }
         Insert: {
@@ -213,6 +214,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          slug: string
           updated_at?: string
         }
         Update: {
@@ -224,6 +226,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          slug?: string
           updated_at?: string
         }
         Relationships: []
@@ -271,6 +274,7 @@ export type Database = {
       }
       job_ads: {
         Row: {
+          archived_at: string | null
           authorized_at: string | null
           authorized_by: string | null
           billing_triggered_at: string | null
@@ -292,6 +296,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           authorized_at?: string | null
           authorized_by?: string | null
           billing_triggered_at?: string | null
@@ -313,6 +318,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           authorized_at?: string | null
           authorized_by?: string | null
           billing_triggered_at?: string | null
@@ -471,6 +477,7 @@ export type Database = {
         Returns: boolean
       }
       is_recruiter_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      slugify: { Args: { _input: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "recruiter" | "member" | "client"

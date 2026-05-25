@@ -9,12 +9,14 @@ export const Route = createFileRoute("/_authenticated/talentportal/clients")({
     }
     const firstLive = ads.find((a) => a.status === "live") ?? ads[0];
     if (firstLive) {
+      // Stopgap: /talentportal/jobs/* doesn't exist yet (will be created in
+      // Prompt 4's bulk rename). Forward to the working /portal route.
       throw redirect({
-        to: "/talentportal/jobs/$slug",
+        to: "/portal/jobs/$slug",
         params: { slug: firstLive.slug },
       });
     }
-    throw redirect({ to: "/talentportal/jobs" });
+    throw redirect({ to: "/portal/jobs" });
   },
   component: () => null,
 });
