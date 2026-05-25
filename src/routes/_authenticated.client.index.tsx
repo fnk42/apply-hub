@@ -1,0 +1,8 @@
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/_authenticated/client/")({
+  beforeLoad: () => {
+    throw redirect({ to: "/talentportal/clients" });
+  },
+  component: () => null,
+});
