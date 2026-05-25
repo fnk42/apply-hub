@@ -598,7 +598,7 @@ function JobAdDetailPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
+                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })}
                         >
                           Open candidate
                         </DropdownMenuItem>
