@@ -42,10 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  FitBadge,
-  FIT_LABELS,
-} from "@/components/portal/Badges";
+import { FitBadge } from "@/components/portal/Badges";
 import {
   ChevronDown,
   ChevronUp,
@@ -126,19 +123,18 @@ function JobAdDetailPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"inbound" | "sourced">("inbound");
+  const [tab, setTab] = useState<"all" | "strong" | "shortlist">("all");
   const [search, setSearch] = useState("");
-  const [fit, setFit] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
-  const [shortlist, setShortlist] = useState<string>("all");
   const [jdExpanded, setJdExpanded] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
 
   const all = candData.candidates;
-  const inboundCount = all.filter((c) => c.source === "public_form").length;
-  const sourcedCount = all.filter((c) => c.source === "manual").length;
+  const allCount = all.length;
+  const strongCount = all.filter((c) => c.fit === "strong").length;
+  const shortlistCount = all.filter((c) => c.shortlisted).length;
 
   // Resolve a candidate's stage_id, falling back to legacy_status mapping if missing
   const resolveStageId = (c: typeof all[number]): string | null => {
@@ -148,12 +144,9 @@ function JobAdDetailPage() {
   };
 
   const rows = all.filter((c) => {
-    const wantSource = tab === "inbound" ? "public_form" : "manual";
-    if (c.source !== wantSource) return false;
-    if (fit !== "all" && c.fit !== fit) return false;
+    if (tab === "strong" && c.fit !== "strong") return false;
+    if (tab === "shortlist" && !c.shortlisted) return false;
     if (stageFilter !== "all" && resolveStageId(c) !== stageFilter) return false;
-    if (shortlist === "on" && !c.shortlisted) return false;
-    if (shortlist === "off" && c.shortlisted) return false;
     if (search) {
       const s = search.toLowerCase();
       if (
@@ -164,6 +157,18 @@ function JobAdDetailPage() {
     }
     return true;
   });
+
+  const FIT_CYCLE = ["unrated", "strong", "medium", "weak"] as const;
+  async function cycleFit(id: string, current: string) {
+    const idx = FIT_CYCLE.indexOf(current as any);
+    const next = FIT_CYCLE[(idx + 1) % FIT_CYCLE.length];
+    try {
+      await updateCandidate({ data: { id, patch: { fit: next } } });
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    }
+  }
 
   const daysLive = ad.authorized_at
     ? Math.max(
@@ -265,11 +270,13 @@ function JobAdDetailPage() {
                 </Link>
               </Button>
             )}
-            <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link to="/portal/jobs/$slug/add-candidate" params={{ slug }}>
-                <Plus className="mr-1 h-4 w-4" /> Add candidate
-              </Link>
-            </Button>
+            {isAdmin && (
+              <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link to="/portal/jobs/$slug/add-candidate" params={{ slug }}>
+                  <Plus className="mr-1 h-4 w-4" /> Add candidate
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -339,16 +346,22 @@ function JobAdDetailPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-6">
         <TabsList>
-          <TabsTrigger value="inbound">
-            Inbound{" "}
+          <TabsTrigger value="all">
+            All candidates{" "}
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-              {inboundCount}
+              {allCount}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="sourced">
-            Sourced{" "}
+          <TabsTrigger value="strong">
+            Strong fit{" "}
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-              {sourcedCount}
+              {strongCount}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="shortlist">
+            Shortlist{" "}
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
+              {shortlistCount}
             </span>
           </TabsTrigger>
         </TabsList>
@@ -377,29 +390,6 @@ function JobAdDetailPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={fit} onValueChange={setFit}>
-          <SelectTrigger className="w-[140px] rounded-full">
-            <SelectValue placeholder="Fit" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All fits</SelectItem>
-            {Object.entries(FIT_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>
-                {v}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={shortlist} onValueChange={setShortlist}>
-          <SelectTrigger className="w-[160px] rounded-full">
-            <SelectValue placeholder="Shortlist" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All candidates</SelectItem>
-            <SelectItem value="on">On shortlist</SelectItem>
-            <SelectItem value="off">Not shortlisted</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-card">
@@ -408,9 +398,11 @@ function JobAdDetailPage() {
             <p className="text-muted-foreground">
               {all.length === 0
                 ? "No candidates yet."
-                : tab === "inbound"
-                  ? "No inbound applications match your filters."
-                  : "No sourced candidates match your filters."}
+                : tab === "strong"
+                  ? "No strong-fit candidates match your filters."
+                  : tab === "shortlist"
+                    ? "No shortlisted candidates match your filters."
+                    : "No candidates match your filters."}
             </p>
           </div>
         ) : (
@@ -477,8 +469,15 @@ function JobAdDetailPage() {
                       );
                     })()}
                   </TableCell>
-                  <TableCell>
-                    <FitBadge value={c.fit} />
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => cycleFit(c.id, c.fit)}
+                      title="Click to cycle fit"
+                      className="cursor-pointer rounded-full ring-offset-background transition hover:ring-2 hover:ring-ring hover:ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <FitBadge value={c.fit} />
+                    </button>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <ResumeLink path={(c as any).resume_url ?? null} />
