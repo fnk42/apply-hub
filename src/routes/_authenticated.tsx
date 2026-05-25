@@ -8,6 +8,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
+  // Short-circuit child beforeLoads during SSR — there's no Supabase session
+  // on the server, so any child that calls a requireSupabaseAuth server fn
+  // would throw and crash SSR. Client-side, the component below gates render.
+  beforeLoad: () => {
+    if (typeof window === "undefined") {
+      throw new Response(null, { status: 204 });
+    }
+  },
   component: AuthenticatedLayout,
 });
 
