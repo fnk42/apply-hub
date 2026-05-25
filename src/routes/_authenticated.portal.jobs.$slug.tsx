@@ -529,19 +529,31 @@ function NameCell({
   const isUrl = linkedinUrl && /^https?:\/\//i.test(linkedinUrl);
   if (isUrl) {
     return (
-      <a
-        href={linkedinUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          openExternal(linkedinUrl!);
+        }}
         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
       >
         {name}
         <ExternalLink className="h-3 w-3" />
-      </a>
+      </button>
     );
   }
   return <span className="font-medium">{name}</span>;
+}
+
+function openExternal(url: string) {
+  try {
+    const top = window.top ?? window;
+    const w = top.open(url, "_blank", "noopener,noreferrer");
+    if (w) return;
+  } catch {
+    // fall through
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function ShareLinkCard({ slug }: { slug: string }) {
