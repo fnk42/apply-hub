@@ -8,8 +8,7 @@ import {
 } from "@/lib/candidates.functions";
 import {
   listPayments,
-  markPaymentPaid,
-  voidPayment,
+  setPaymentStatus,
   getAppSettings,
   updateAppSettings,
   listAllJobAds,
@@ -252,24 +251,17 @@ function BillingTab() {
 
   const rows = data.payments.filter((p) => filter === "all" || p.status === filter);
 
-  async function doMarkPaid(id: string) {
+  const NEXT: Record<string, "pending" | "paid" | "void"> = {
+    pending: "paid",
+    paid: "void",
+    void: "pending",
+  };
+
+  async function cycle(id: string, current: string) {
     setBusy(id);
     try {
-      await markPaymentPaid({ data: { id } });
-      toast.success("Marked as paid");
-      qc.invalidateQueries({ queryKey: ["admin-payments"] });
-      qc.invalidateQueries({ queryKey: ["admin-job-ads"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-  async function doVoid(id: string) {
-    setBusy(id);
-    try {
-      await voidPayment({ data: { id } });
-      toast.success("Payment voided");
+      const next = NEXT[current] ?? "pending";
+      await setPaymentStatus({ data: { id, status: next } });
       qc.invalidateQueries({ queryKey: ["admin-payments"] });
       qc.invalidateQueries({ queryKey: ["admin-job-ads"] });
     } catch (e) {
@@ -312,7 +304,7 @@ function BillingTab() {
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Trigger</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[200px] text-right">Actions</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -332,33 +324,16 @@ function BillingTab() {
                     {p.triggered_by === "auto_10_candidates" ? "Auto (10 cand.)" : "Manual"}
                   </TableCell>
                   <TableCell>
-                    <StatusPill status={p.status} />
+                    <PaymentStatusPill
+                      status={p.status}
+                      busy={busy === p.id}
+                      onClick={() => cycle(p.id, p.status)}
+                    />
                   </TableCell>
-                  <TableCell className="text-right">
-                    {p.status === "pending" && (
-                      <div className="inline-flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={busy === p.id}
-                          onClick={() => doMarkPaid(p.id)}
-                        >
-                          Mark paid
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy === p.id}
-                          onClick={() => doVoid(p.id)}
-                        >
-                          Void
-                        </Button>
-                      </div>
-                    )}
-                    {p.status === "paid" && p.paid_at && (
-                      <span className="text-xs text-muted-foreground">
-                        Paid {format(new Date(p.paid_at), "d MMM yyyy")}
-                      </span>
-                    )}
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {p.status === "paid" && p.paid_at
+                      ? format(new Date(p.paid_at), "d MMM yyyy")
+                      : "—"}
                   </TableCell>
                 </TableRow>
               ))}
@@ -366,20 +341,43 @@ function BillingTab() {
           </Table>
         )}
       </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Click a status pill to cycle: pending → paid → void → pending.
+      </p>
     </div>
   );
 }
 
-function StatusPill({ status }: { status: string }) {
+function PaymentStatusPill({
+  status,
+  busy,
+  onClick,
+}: {
+  status: string;
+  busy: boolean;
+  onClick: () => void;
+}) {
   const map: Record<string, string> = {
-    pending: "bg-amber-500/10 text-amber-700",
-    paid: "bg-emerald-500/10 text-emerald-700",
-    void: "bg-slate-500/10 text-slate-700",
+    pending: "bg-amber-500/10 text-amber-700 hover:bg-amber-500/20",
+    paid: "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20",
+    void: "bg-slate-500/10 text-slate-700 hover:bg-slate-500/20",
   };
   return (
-    <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium capitalize", map[status])}>
-      {status}
-    </span>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={busy}
+      title="Click to cycle status"
+      className={cn(
+        "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize transition-colors disabled:opacity-50",
+        map[status] ?? "bg-muted text-muted-foreground",
+      )}
+    >
+      {busy ? "…" : status}
+    </button>
   );
 }
 

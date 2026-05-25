@@ -1,11 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { company } from "@/config/company";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+
+const ALLOWED_DOMAINS = ["goldenpipitrecruiting.com", "mpshahhospital.org"];
+
+function isAllowedDomain(email: string | null | undefined) {
+  if (!email) return false;
+  const domain = email.split("@")[1]?.toLowerCase();
+  return !!domain && ALLOWED_DOMAINS.includes(domain);
+}
 
 function normalizeRedirect(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/portal";
@@ -29,6 +38,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const goToDestination = useCallback(() => {
     void navigate({ to: destination as any, replace: true });
@@ -43,6 +53,11 @@ function LoginPage() {
       if (!session || cancelled) return;
       const { data } = await supabase.auth.getUser();
       if (cancelled || !data.user) return;
+      if (!isAllowedDomain(data.user.email)) {
+        await supabase.auth.signOut();
+        toast.error("Access is invite-only. Your email domain is not approved.");
+        return;
+      }
       void navigate({ to: normalizeRedirect(destination) as any, replace: true });
     }
     forwardWhenAuthenticated();
@@ -55,10 +70,7 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       goToDestination();
     } catch (err: any) {
@@ -68,24 +80,55 @@ function LoginPage() {
     }
   }
 
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/login",
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      const { data } = await supabase.auth.getUser();
+      if (!isAllowedDomain(data.user?.email)) {
+        await supabase.auth.signOut();
+        toast.error("Access is invite-only. Your email domain is not approved.");
+        return;
+      }
+      goToDestination();
+    } catch (err: any) {
+      toast.error(err?.message || "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
-        <Link
-          to="/"
-          className="mb-6 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Link to="/" className="mb-6 text-sm text-muted-foreground hover:text-foreground">
           ← Back to apply page
         </Link>
         <div className="rounded-lg border border-border bg-card p-8 shadow-sm">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Recruiter sign in
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {company.name} portal
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{company.name} portal</p>
 
-          <form onSubmit={handleEmail} className="mt-6 space-y-4">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={googleLoading}
+            onClick={handleGoogle}
+            className="mt-6 w-full"
+          >
+            {googleLoading ? "Redirecting…" : "Continue with Google"}
+          </Button>
+
+          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            or email
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <form onSubmit={handleEmail} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -117,7 +160,8 @@ function LoginPage() {
           </form>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Access is invite-only. Need an account? Ask an admin to add you.
+            Access is invite-only. Approved domains: goldenpipitrecruiting.com,
+            mpshahhospital.org.
           </p>
         </div>
       </div>

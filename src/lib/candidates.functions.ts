@@ -287,6 +287,27 @@ export const inviteClient = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!roleRow) throw new Error("Only admins can invite clients.");
 
+    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
+    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
+      throw new Error(
+        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
+      );
+    }
+
+    // Pre-register on allowlist so the new-user trigger admits this email.
+    const { error: allowErr } = await supabaseAdmin
+      .from("allowed_emails")
+      .upsert(
+        {
+          email: data.email.toLowerCase(),
+          role: "client",
+          client_id: data.client_id,
+          invited_by: userId,
+        },
+        { onConflict: "email" },
+      );
+    if (allowErr) throw new Error(allowErr.message);
+
     const { data: invited, error: invErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     let authUserId = invited?.user?.id ?? null;
@@ -332,8 +353,109 @@ export const listClients = createServerFn({ method: "GET" })
       .select("id, name, contact_name, contact_email, auth_user_id")
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
-    return { clients: data ?? [] };
+
+    const ids = (data ?? []).map((c) => c.id);
+    if (ids.length === 0) return { clients: [] };
+
+    const [adsRes, paysRes] = await Promise.all([
+      supabaseAdmin
+        .from("job_ads")
+        .select("id, client_id, status, roles_count")
+        .in("client_id", ids),
+      supabaseAdmin
+        .from("payments")
+        .select("client_id, status, amount")
+        .in("client_id", ids),
+    ]);
+
+    const adsByClient = new Map<string, any[]>();
+    for (const a of adsRes.data ?? []) {
+      const arr = adsByClient.get(a.client_id) ?? [];
+      arr.push(a);
+      adsByClient.set(a.client_id, arr);
+    }
+    const paysByClient = new Map<string, any[]>();
+    for (const p of paysRes.data ?? []) {
+      const arr = paysByClient.get(p.client_id) ?? [];
+      arr.push(p);
+      paysByClient.set(p.client_id, arr);
+    }
+
+    const clients = (data ?? []).map((c) => {
+      const ads = adsByClient.get(c.id) ?? [];
+      const pays = paysByClient.get(c.id) ?? [];
+      const liveAds = ads.filter((a) => a.status === "live");
+      const openAds = ads.filter((a) => a.status !== "closed");
+      const live_roles = liveAds.reduce(
+        (sum, a) => sum + (a.roles_count ?? 0),
+        0,
+      );
+      const expected_revenue = pays
+        .filter((p) => p.status === "pending" || p.status === "paid")
+        .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+      const collected_revenue = pays
+        .filter((p) => p.status === "paid")
+        .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+      return {
+        ...c,
+        live_roles,
+        open_ads: openAds.length,
+        total_ads: ads.length,
+        expected_revenue,
+        collected_revenue,
+      };
+    });
+
+    return { clients };
   });
+
+// ---- getClientDetail (admin) ----
+export const getClientDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ client_id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Admin role required.");
+
+    const { data: client, error } = await supabaseAdmin
+      .from("clients")
+      .select(
+        "id, name, contact_name, contact_email, notes, auth_user_id, contract_ad_allowance, created_at",
+      )
+      .eq("id", data.client_id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const [adsRes, paysRes] = await Promise.all([
+      supabaseAdmin
+        .from("job_ads")
+        .select(
+          "id, slug, title, status, roles_count, is_billable, posting_fee, start_date, created_at, closed_at",
+        )
+        .eq("client_id", data.client_id)
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("payments")
+        .select("id, job_ad_id, amount, currency, status, paid_at, created_at, triggered_by")
+        .eq("client_id", data.client_id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    return {
+      client,
+      job_ads: adsRes.data ?? [],
+      payments: paysRes.data ?? [],
+    };
+  });
+
 
 // ---- createClient (admin) ----
 export const createClient = createServerFn({ method: "POST" })
