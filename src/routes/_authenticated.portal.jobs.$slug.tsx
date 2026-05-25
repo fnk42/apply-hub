@@ -360,6 +360,12 @@ function JobAdDetailPage() {
               {strongCount}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="medium">
+            Medium fit{" "}
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
+              {mediumCount}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="shortlist">
             Shortlist{" "}
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
