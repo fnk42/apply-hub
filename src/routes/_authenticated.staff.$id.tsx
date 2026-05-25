@@ -61,6 +61,7 @@ export const Route = createFileRoute("/_authenticated/staff/$id")({
 
 function CandidateDetailPage() {
   const { id } = Route.useParams();
+  const { from } = Route.useSearch();
   const { data } = useSuspenseQuery(candidateQuery(id));
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -74,6 +75,48 @@ function CandidateDetailPage() {
     queryFn: () => getPortalShell(),
   });
   const isAdmin = (shell?.roles ?? []).includes("admin");
+
+  // Sibling navigation: fetch the originating job ad's candidate list if `from` is set.
+  const { data: siblingsData } = useQuery({
+    ...siblingsQuery(from ?? ""),
+    enabled: !!from,
+  });
+  const { prevId, nextId, position } = useMemo(() => {
+    const list = siblingsData?.candidates ?? [];
+    if (!from || list.length === 0) return { prevId: null as string | null, nextId: null as string | null, position: null as { idx: number; total: number } | null };
+    const idx = list.findIndex((c: any) => c.id === id);
+    if (idx === -1) return { prevId: null, nextId: null, position: null };
+    return {
+      prevId: idx > 0 ? (list[idx - 1] as any).id : null,
+      nextId: idx < list.length - 1 ? (list[idx + 1] as any).id : null,
+      position: { idx: idx + 1, total: list.length },
+    };
+  }, [siblingsData, from, id]);
+
+  function gotoSibling(targetId: string | null) {
+    if (!targetId) return;
+    navigate({ to: "/staff/$id", params: { id: targetId }, search: { from } });
+  }
+
+  // Keyboard shortcuts: ← / → flip through siblings.
+  useEffect(() => {
+    if (!from) return;
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement | null)?.isContentEditable) return;
+      if (e.key === "ArrowLeft" && prevId) {
+        e.preventDefault();
+        gotoSibling(prevId);
+      } else if (e.key === "ArrowRight" && nextId) {
+        e.preventDefault();
+        gotoSibling(nextId);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, prevId, nextId]);
+
 
   async function handleDelete() {
     setDeleting(true);
