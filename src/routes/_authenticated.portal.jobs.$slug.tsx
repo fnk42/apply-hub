@@ -146,6 +146,7 @@ function JobAdDetailPage() {
 
   const rows = all.filter((c) => {
     if (tab === "strong" && c.fit !== "strong") return false;
+    if (tab === "medium" && c.fit !== "medium") return false;
     if (tab === "shortlist" && !c.shortlisted) return false;
     if (stageFilter !== "all" && resolveStageId(c) !== stageFilter) return false;
     if (search) {
