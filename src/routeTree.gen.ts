@@ -26,6 +26,7 @@ import { Route as AuthenticatedPortalIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPortalJobsIndexRouteImport } from './routes/_authenticated.portal.jobs.index'
 import { Route as AuthenticatedPortalJobsNewRouteImport } from './routes/_authenticated.portal.jobs.new'
 import { Route as AuthenticatedPortalJobsSlugRouteImport } from './routes/_authenticated.portal.jobs.$slug'
+import { Route as AuthenticatedPortalClientsIdRouteImport } from './routes/_authenticated.portal.clients.$id'
 import { Route as AuthenticatedPortalJobsSlugStagesRouteImport } from './routes/_authenticated.portal.jobs.$slug.stages'
 import { Route as AuthenticatedPortalJobsSlugAddCandidateRouteImport } from './routes/_authenticated.portal.jobs.$slug.add-candidate'
 
@@ -123,6 +124,12 @@ const AuthenticatedPortalJobsSlugRoute =
     path: '/jobs/$slug',
     getParentRoute: () => AuthenticatedPortalRoute,
   } as any)
+const AuthenticatedPortalClientsIdRoute =
+  AuthenticatedPortalClientsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedPortalClientsRoute,
+  } as any)
 const AuthenticatedPortalJobsSlugStagesRoute =
   AuthenticatedPortalJobsSlugStagesRouteImport.update({
     id: '/stages',
@@ -146,10 +153,11 @@ export interface FileRoutesByFullPath {
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/portal/admin': typeof AuthenticatedPortalAdminRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
-  '/portal/clients': typeof AuthenticatedPortalClientsRoute
+  '/portal/clients': typeof AuthenticatedPortalClientsRouteWithChildren
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal/': typeof AuthenticatedPortalIndexRoute
+  '/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/portal/jobs/new': typeof AuthenticatedPortalJobsNewRoute
   '/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
@@ -165,10 +173,11 @@ export interface FileRoutesByTo {
   '/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/portal/admin': typeof AuthenticatedPortalAdminRoute
   '/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
-  '/portal/clients': typeof AuthenticatedPortalClientsRoute
+  '/portal/clients': typeof AuthenticatedPortalClientsRouteWithChildren
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/portal': typeof AuthenticatedPortalIndexRoute
+  '/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/portal/jobs/new': typeof AuthenticatedPortalJobsNewRoute
   '/portal/jobs': typeof AuthenticatedPortalJobsIndexRoute
@@ -187,10 +196,11 @@ export interface FileRoutesById {
   '/_authenticated/portal/activity': typeof AuthenticatedPortalActivityRoute
   '/_authenticated/portal/admin': typeof AuthenticatedPortalAdminRoute
   '/_authenticated/portal/candidates': typeof AuthenticatedPortalCandidatesRoute
-  '/_authenticated/portal/clients': typeof AuthenticatedPortalClientsRoute
+  '/_authenticated/portal/clients': typeof AuthenticatedPortalClientsRouteWithChildren
   '/_authenticated/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/_authenticated/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
+  '/_authenticated/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/_authenticated/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
   '/_authenticated/portal/jobs/new': typeof AuthenticatedPortalJobsNewRoute
   '/_authenticated/portal/jobs/': typeof AuthenticatedPortalJobsIndexRoute
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/portal/settings'
     | '/portal/shortlist'
     | '/portal/'
+    | '/portal/clients/$id'
     | '/portal/jobs/$slug'
     | '/portal/jobs/new'
     | '/portal/jobs/'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/portal/settings'
     | '/portal/shortlist'
     | '/portal'
+    | '/portal/clients/$id'
     | '/portal/jobs/$slug'
     | '/portal/jobs/new'
     | '/portal/jobs'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
     | '/_authenticated/portal/settings'
     | '/_authenticated/portal/shortlist'
     | '/_authenticated/portal/'
+    | '/_authenticated/portal/clients/$id'
     | '/_authenticated/portal/jobs/$slug'
     | '/_authenticated/portal/jobs/new'
     | '/_authenticated/portal/jobs/'
@@ -389,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortalJobsSlugRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
     }
+    '/_authenticated/portal/clients/$id': {
+      id: '/_authenticated/portal/clients/$id'
+      path: '/$id'
+      fullPath: '/portal/clients/$id'
+      preLoaderRoute: typeof AuthenticatedPortalClientsIdRouteImport
+      parentRoute: typeof AuthenticatedPortalClientsRoute
+    }
     '/_authenticated/portal/jobs/$slug/stages': {
       id: '/_authenticated/portal/jobs/$slug/stages'
       path: '/stages'
@@ -405,6 +425,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedPortalClientsRouteChildren {
+  AuthenticatedPortalClientsIdRoute: typeof AuthenticatedPortalClientsIdRoute
+}
+
+const AuthenticatedPortalClientsRouteChildren: AuthenticatedPortalClientsRouteChildren =
+  {
+    AuthenticatedPortalClientsIdRoute: AuthenticatedPortalClientsIdRoute,
+  }
+
+const AuthenticatedPortalClientsRouteWithChildren =
+  AuthenticatedPortalClientsRoute._addFileChildren(
+    AuthenticatedPortalClientsRouteChildren,
+  )
 
 interface AuthenticatedPortalJobsSlugRouteChildren {
   AuthenticatedPortalJobsSlugAddCandidateRoute: typeof AuthenticatedPortalJobsSlugAddCandidateRoute
@@ -429,7 +463,7 @@ interface AuthenticatedPortalRouteChildren {
   AuthenticatedPortalActivityRoute: typeof AuthenticatedPortalActivityRoute
   AuthenticatedPortalAdminRoute: typeof AuthenticatedPortalAdminRoute
   AuthenticatedPortalCandidatesRoute: typeof AuthenticatedPortalCandidatesRoute
-  AuthenticatedPortalClientsRoute: typeof AuthenticatedPortalClientsRoute
+  AuthenticatedPortalClientsRoute: typeof AuthenticatedPortalClientsRouteWithChildren
   AuthenticatedPortalSettingsRoute: typeof AuthenticatedPortalSettingsRoute
   AuthenticatedPortalShortlistRoute: typeof AuthenticatedPortalShortlistRoute
   AuthenticatedPortalIndexRoute: typeof AuthenticatedPortalIndexRoute
@@ -443,7 +477,7 @@ const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
   AuthenticatedPortalActivityRoute: AuthenticatedPortalActivityRoute,
   AuthenticatedPortalAdminRoute: AuthenticatedPortalAdminRoute,
   AuthenticatedPortalCandidatesRoute: AuthenticatedPortalCandidatesRoute,
-  AuthenticatedPortalClientsRoute: AuthenticatedPortalClientsRoute,
+  AuthenticatedPortalClientsRoute: AuthenticatedPortalClientsRouteWithChildren,
   AuthenticatedPortalSettingsRoute: AuthenticatedPortalSettingsRoute,
   AuthenticatedPortalShortlistRoute: AuthenticatedPortalShortlistRoute,
   AuthenticatedPortalIndexRoute: AuthenticatedPortalIndexRoute,
