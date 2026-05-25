@@ -107,6 +107,7 @@ function AdminPage() {
         <TabsList>
           <TabsTrigger value="jobs">Job Ads</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="jobs" className="mt-6">
@@ -114,6 +115,9 @@ function AdminPage() {
         </TabsContent>
         <TabsContent value="billing" className="mt-6">
           <BillingTab />
+        </TabsContent>
+        <TabsContent value="team" className="mt-6">
+          <TeamTab />
         </TabsContent>
         <TabsContent value="settings" className="mt-6">
           <SettingsTab />
