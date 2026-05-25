@@ -1,30 +1,55 @@
-## Why invites aren't arriving
+## Goal
 
-Two independent problems:
+1. Turn off Google sign-in entirely — login is email/password via invite link only.
+2. Lock down the portal so that **only admins** see anything other than the Business Development Manager candidates tab. Clients and members both land on `/portal/jobs/business-development-manager` and have no UI to navigate elsewhere.
 
-1. **No custom auth email sender is wired up.** The verified domain `notify.goldenpipitrecruiting.com` exists, but the project has no auth email hook, so `supabase.auth.admin.inviteUserByEmail(...)` falls back to Supabase's built‑in email service. That service is heavily rate‑limited (≈4/hour) and frequently silently drops invites — which matches what you're seeing.
-2. **Re‑inviting an existing user sends nothing.** Auth logs show `/invite → 422 email_exists` on the most recent attempt. Both `inviteClient` and `inviteInternalUser` catch that error, link the existing `auth_user_id`, and return success — but they never trigger a new email. So any user who was ever invited before gets no follow‑up email on subsequent "Invite" clicks.
+---
 
-## Plan
+## 1. Remove Google sign-in
 
-1. **Set up branded auth emails on the verified domain**
-   - Scaffold Lovable auth email templates so invite / magic‑link / recovery / signup emails are sent from `notify.goldenpipitrecruiting.com` via Lovable Emails (queued, retried, logged).
-   - Apply the portal's brand styling (serif heading, neutral palette, white email background) to the invite + magic‑link templates so the email matches the app.
-   - Once active, `inviteUserByEmail` will be delivered through this pipeline instead of Supabase's default sender.
+**Backend (auth provider)**
+- Call `supabase--configure_social_auth` with `providers: []` and `disable_providers: ["google"]` so the Google provider is turned off at the auth layer. Email/password stays enabled.
 
-2. **Make "Invite" always send an email, even for existing users**
-   - In `inviteClient` (`src/lib/candidates.functions.ts`) and `inviteInternalUser` (`src/lib/admin.functions.ts`), when `inviteUserByEmail` returns `email_exists`:
-     - Look up the existing user (already done).
-     - Then call `supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: <portal URL> } })` so the same auth email pipeline sends a fresh sign‑in link.
-     - Keep the existing role / `auth_user_id` linking logic unchanged.
-   - For first‑time invites, keep `inviteUserByEmail` (which already sends the invite email via the new hook).
+**Frontend (`src/routes/login.tsx`)**
+- Remove the `googleLoading` state, the `handleGoogle` function, the "Continue with Google" button, and the "or email" divider.
+- Drop the now-unused `lovable` import.
+- Keep the existing email/password form and the invite-only notice unchanged.
 
-3. **Surface failures in the UI**
-   - If link generation fails, propagate a clear error to the toast (`"Failed to send invite email: …"`) instead of returning `ok: true`, so an admin notices when delivery is broken.
+We do **not** delete `src/integrations/lovable/index.ts` — it is auto-generated and harmless when unused.
 
-4. **Verification after deploy**
-   - Re‑invite the affected client/internal user from the UI.
-   - Confirm a row appears in `email_send_log` with `status = sent` and `template_name = auth_emails`.
-   - Confirm the recipient receives the email from `…@notify.goldenpipitrecruiting.com`.
+---
 
-No DB schema, RLS, or routing changes. Auth provider settings stay as‑is (Google + email).
+## 2. Restrict non-admin users to the BDM tab
+
+Current behavior: clients see all `live` job ads in the sidebar; internal members see all groups plus Activity / Clients / Admin / Settings. We want **only admins** to see anything beyond the single BDM job.
+
+**`src/components/portal/AppSidebar.tsx`**
+- Treat anyone who is not `admin` (clients *and* members) as "restricted":
+  - Filter `ads` down to just the one whose slug is `business-development-manager` (fall back to the first `live` ad if for some reason that slug is missing).
+  - Hide the group label.
+  - Hide the Activity Log, Clients, Admin, and Settings menu items. (Today these are gated on `isInternal` / `isAdmin`; tighten so the whole bottom group only renders when `isAdmin === true`.)
+- Admins keep the full sidebar exactly as it is today.
+
+**Default landing route (`src/routes/_authenticated.portal.index.tsx` and `login.tsx`'s `resolveDestination`)**
+- Already redirects everyone with a portal role to `/portal/jobs/business-development-manager`. Leave that as-is; it now matches the locked-down sidebar.
+
+**Server-side guard (defense in depth) — `src/routes/_authenticated.portal.jobs.$slug.tsx`**
+- In `beforeLoad`, fetch the user's roles via `getMyRoles()`. If the user is not `admin` and the requested `slug !== "business-development-manager"`, `throw redirect({ to: "/portal/jobs/$slug", params: { slug: "business-development-manager" } })`.
+- This prevents a client or member from reaching another job tab by typing the URL directly, even though the sidebar no longer links there.
+
+**Admin-only routes already protected by role checks** (Activity, Clients, Admin, Settings) — verify each route file has a `beforeLoad` that redirects non-admins to `/portal/jobs/business-development-manager` (today some use `isInternal`). Update any that allow `member` to be admin-only.
+
+---
+
+## Out of scope
+
+- No changes to invite flow, email templates, or `SITE_NAME` (that's the separate naming decision still pending).
+- No DB schema changes; role data already lives in `user_roles`.
+- The `lovable` OAuth helper file stays in place (auto-generated).
+
+## Verification after build
+
+1. Visit `/login` — only email/password form is shown; no Google button.
+2. Sign in as a client → land on BDM tab; sidebar shows only that one job; no Activity / Clients / Admin / Settings.
+3. Manually visit `/portal/jobs/<other-slug>` as a client → redirected back to BDM tab.
+4. Sign in as admin → full sidebar with all groups and admin tabs intact.

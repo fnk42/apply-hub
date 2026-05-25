@@ -53,11 +53,16 @@ export function AppSidebar() {
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
 
   const appName = data?.appName ?? "Project Dashboard";
-  const ads = data?.ads ?? [];
+  const allAds = data?.ads ?? [];
   const roles = data?.roles ?? [];
-  const isInternal =
-    roles.includes("admin") || roles.includes("member");
   const isAdmin = roles.includes("admin");
+  const isInternal = isAdmin || roles.includes("member");
+  // Non-admins (clients + members) only ever see the BDM tab.
+  const ads = isAdmin
+    ? allAds
+    : allAds.filter((a) => a.slug === "business-development-manager").length > 0
+      ? allAds.filter((a) => a.slug === "business-development-manager")
+      : allAds.filter((a) => a.status === "live").slice(0, 1);
 
   return (
     <Sidebar collapsible="icon">
@@ -76,11 +81,11 @@ export function AppSidebar() {
         {GROUPS.map((g) => {
           const items = ads.filter((a) => g.statuses.includes(a.status));
           if (items.length === 0) return null;
-          // Clients only ever see live ads — collapse the "Live" label
-          if (!isInternal && g.key !== "live") return null;
+          // Non-admins only see the (single) live tab; collapse labels for them.
+          if (!isAdmin && g.key !== "live") return null;
           return (
             <SidebarGroup key={g.key}>
-              {isInternal && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
+              {isAdmin && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.map((a) => (
@@ -111,7 +116,7 @@ export function AppSidebar() {
           );
         })}
 
-        {isInternal && (
+        {isAdmin && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>

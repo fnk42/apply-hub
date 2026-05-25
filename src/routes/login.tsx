@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { company } from "@/config/company";
 import { getMyRoles } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,6 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const resolveDestination = useCallback(async (): Promise<string> => {
     // If a specific redirect was requested (and isn't the default /portal), honor it
@@ -102,27 +100,6 @@ function LoginPage() {
     }
   }
 
-  async function handleGoogle() {
-    setGoogleLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/login",
-      });
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-      const { data } = await supabase.auth.getUser();
-      if (!isAllowedDomain(data.user?.email)) {
-        await supabase.auth.signOut();
-        toast.error("Access is invite-only. Your email domain is not approved.");
-        return;
-      }
-      await goToDestination();
-    } catch (err: any) {
-      toast.error(err?.message || "Google sign-in failed");
-    } finally {
-      setGoogleLoading(false);
-    }
-  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -134,23 +111,7 @@ function LoginPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
           <p className="mt-1 text-sm text-muted-foreground">{company.name} portal</p>
 
-          <Button
-            type="button"
-            variant="outline"
-            disabled={googleLoading}
-            onClick={handleGoogle}
-            className="mt-6 w-full"
-          >
-            {googleLoading ? "Redirecting…" : "Continue with Google"}
-          </Button>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            or email
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <form onSubmit={handleEmail} className="space-y-4">
+          <form onSubmit={handleEmail} className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
