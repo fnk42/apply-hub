@@ -135,7 +135,7 @@ function CandidateDetailPage() {
               <a
                 href={a.linkedin_url!}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 hover:underline"
               >
                 {a.full_name}

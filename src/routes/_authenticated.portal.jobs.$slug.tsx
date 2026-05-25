@@ -532,7 +532,7 @@ function NameCell({
       <a
         href={linkedinUrl}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
       >
@@ -571,7 +571,7 @@ function ShareLinkCard({ slug }: { slug: string }) {
         <Copy className="mr-1 h-4 w-4" /> Copy
       </Button>
       <Button asChild variant="outline" size="sm">
-        <a href={url} target="_blank" rel="noreferrer">
+        <a href={url} target="_blank" rel="noopener noreferrer">
           <ExternalLink className="mr-1 h-4 w-4" /> Open
         </a>
       </Button>
@@ -614,7 +614,7 @@ function JdPanel({
             <a
               href={ad.linkedin_job_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
             >
               <Linkedin className="h-3.5 w-3.5" /> LinkedIn
@@ -624,7 +624,7 @@ function JdPanel({
             <a
               href={ad.jd_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
             >
               <FileText className="h-3.5 w-3.5" /> JD link
