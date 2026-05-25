@@ -305,9 +305,11 @@ export const inviteClient = createServerFn({ method: "POST" })
     const { data: invited, error: invErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     let authUserId = invited?.user?.id ?? null;
+    let alreadyRegistered = false;
     if (invErr) {
       const msg = invErr.message?.toLowerCase() ?? "";
       if (msg.includes("already") || msg.includes("registered")) {
+        alreadyRegistered = true;
         const { data: list } = await supabaseAdmin.auth.admin.listUsers();
         const found = list?.users?.find(
           (u) => u.email?.toLowerCase() === data.email.toLowerCase(),
@@ -319,6 +321,17 @@ export const inviteClient = createServerFn({ method: "POST" })
       }
     }
     if (!authUserId) throw new Error("Failed to create user.");
+    if (alreadyRegistered) {
+      const siteUrl =
+        process.env.SITE_URL ||
+        "https://joy-apply-engine.lovable.app";
+      const { error: resetErr } = await supabaseAdmin.auth.resetPasswordForEmail(
+        data.email,
+        { redirectTo: `${siteUrl}/reset-password` },
+      );
+      if (resetErr) throw new Error(resetErr.message);
+    }
+
 
     const { error: linkErr } = await supabaseAdmin
       .from("clients")
