@@ -8,6 +8,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
+  // Authenticated routes depend on the Supabase session, which only exists
+  // in the browser (localStorage). Skip SSR so child loaders/beforeLoads
+  // don't run server-side without an auth token (which would crash SSR or
+  // redirect to /login and cause a login flash on refresh).
+  ssr: false,
   component: AuthenticatedLayout,
 });
 
