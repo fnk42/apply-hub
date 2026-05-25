@@ -77,11 +77,10 @@ export function AppSidebar() {
         {GROUPS.map((g) => {
           const items = ads.filter((a) => g.statuses.includes(a.status));
           if (items.length === 0) return null;
-          // Non-admins only see the (single) live tab; collapse labels for them.
-          if (!isAdmin && g.key !== "live") return null;
           return (
             <SidebarGroup key={g.key}>
-              {isAdmin && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
+              <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.map((a) => (
