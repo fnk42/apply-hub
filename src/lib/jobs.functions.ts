@@ -130,3 +130,47 @@ export const setJobAdStatus = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+// ---- updateJobAd (admin) — edit metadata ----
+const updateInput = z.object({
+  id: z.string().uuid(),
+  patch: z.object({
+    title: z.string().trim().min(1).max(200).optional(),
+    jd_text: z.string().trim().max(20000).nullable().optional(),
+    jd_url: z.string().trim().url().max(500).nullable().optional().or(z.literal("")),
+    linkedin_job_url: z.string().trim().url().max(500).nullable().optional().or(z.literal("")),
+    roles_count: z.number().int().min(1).max(50).optional(),
+    start_date: z.string().nullable().optional().or(z.literal("")),
+    is_billable: z.boolean().optional(),
+    posting_fee: z.number().int().min(0).max(100_000_000).nullable().optional(),
+  }),
+});
+
+export const updateJobAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => updateInput.parse(data))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await requireAdmin(supabase, userId);
+
+    const patch: Record<string, any> = {};
+    const p = data.patch;
+    if (p.title !== undefined) patch.title = p.title;
+    if (p.jd_text !== undefined) patch.jd_text = p.jd_text || null;
+    if (p.jd_url !== undefined) patch.jd_url = p.jd_url || null;
+    if (p.linkedin_job_url !== undefined) patch.linkedin_job_url = p.linkedin_job_url || null;
+    if (p.roles_count !== undefined) patch.roles_count = p.roles_count;
+    if (p.start_date !== undefined) patch.start_date = p.start_date || null;
+    if (p.is_billable !== undefined) patch.is_billable = p.is_billable;
+    if (p.posting_fee !== undefined) patch.posting_fee = p.posting_fee;
+
+    if (Object.keys(patch).length === 0) return { ok: true };
+
+    const { error } = await supabaseAdmin
+      .from("job_ads")
+      .update(patch as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
