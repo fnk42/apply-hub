@@ -132,15 +132,21 @@ function CandidateDetailPage() {
         <div>
           <h1 className="font-serif text-3xl tracking-tight text-foreground">
             {hasLinkedIn ? (
-              <a
-                href={a.linkedin_url!}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => {
+                  const url = a.linkedin_url!;
+                  try {
+                    (window.top ?? window).open(url, "_blank", "noopener,noreferrer");
+                  } catch {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }
+                }}
                 className="inline-flex items-center gap-2 hover:underline"
               >
                 {a.full_name}
                 <ExternalLink className="h-5 w-5" />
-              </a>
+              </button>
             ) : (
               a.full_name
             )}
