@@ -306,7 +306,7 @@ function ClientJobAdView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((c) => {
+              {pageRows.map((c) => {
                 const sid = resolveStageId(c);
                 const cur = sid ? stageById.get(sid) : null;
                 return (
