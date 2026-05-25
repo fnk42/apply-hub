@@ -1,80 +1,70 @@
-# Prompt 6.5 — Login UX + open up invite gate + fix sign-in bounce
+# Prompt 6.6 — Candidates table: pagination, row actions, faster fit, password reset
 
-Three small, related fixes. No new routes, no new tables.
+Five changes, all scoped to the existing job-slug candidates table and the login flow. No DB schema changes.
 
-## 1. Password visibility toggle (`src/routes/login.tsx`)
+## 1. Paginate candidates (50/page) — `src/routes/_authenticated.staff.jobs.$slug.tsx`
 
-- `const [showPassword, setShowPassword] = useState(false)`.
-- Password `<Input>` `type` becomes `showPassword ? "text" : "password"`.
-- Wrap input in a `relative` div; absolute ghost button on the right toggles state.
-- `Eye` / `EyeOff` from `lucide-react` (already a dep).
-- `aria-label`, `tabIndex={-1}` so it doesn't steal tab order from the submit button.
+- `const [page, setPage] = useState(1)`, `const PAGE_SIZE = 50`.
+- After computing the filtered `rows` array, slice for display: `pageRows = rows.slice((page-1)*50, page*50)`.
+- `useEffect` resets `page` to 1 whenever `tab`, `stageFilter`, or `search` changes.
+- Footer below table: "Showing X–Y of N" with Prev / Next + current page indicator, shown only when `rows.length > 50`.
+- Mirror in `src/routes/_authenticated/client.jobs.$slug.tsx` for consistency.
 
-## 2. Remove the domain whitelist (two places)
+## 2. Three-dot row action → candidate "more" — same file
 
-### a) Client — `src/routes/login.tsx`
-Delete `ALLOWED_DOMAINS`, `isAllowedDomain()`, and the `if (!isAllowedDomain(...)) { signOut(); toast.error(...) }` branch inside the session `useEffect`. Also drop the footer line "Approved domains: ...".
+- Add trailing column `<TableHead className="w-[40px]" />`.
+- Per row: `DropdownMenu` with a ghost `MoreVertical` icon button. `onClick={(e) => e.stopPropagation()}` on the trigger so the row's own click doesn't fire.
+- Menu items:
+  - **Open candidate** → `navigate({ to: "/staff/$id", params: { id: c.id } })`
+  - **Open LinkedIn** (only if `c.linkedin_url` is a URL) → `openExternal(c.linkedin_url)`
+  - **Open resume** (only if `c.resume_url`) — uses existing helper
+  - **Toggle shortlist**
+  - **Clear fit rating** → sets fit back to `unrated`
 
-**This also fixes the `info@...` bounce.** Right now: sign in succeeds → navigate to `/main` → login page's session effect fires → email domain isn't on the whitelist → `supabase.auth.signOut()` → `_authenticated` sees no session → kicks back to `/login`. Removing the whitelist removes the bounce.
+## 3. Visual affordance: name is a clickable link — same file
 
-### b) Server — `public.handle_new_user()` (migration)
-Drop the hard-coded domain check. Keep the `allowed_emails` lookup — that's still the real invite gate, so an arbitrary stranger still can't sign up.
+The `NameCell` already opens LinkedIn when `linkedin_url` is a URL, but the click target is too subtle. The whole row is clickable and navigates to the candidate detail page, so the name needs to be clearly a separate, secondary action.
 
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  v_email citext;
-  v_row   public.allowed_emails%ROWTYPE;
-BEGIN
-  v_email := lower(NEW.email)::citext;
+- When `linkedin_url` is a valid URL, render the name in `text-primary` with an underline that appears on hover (`hover:underline`). The existing `NameCell` component already has `font-medium` and `hover:underline` but it doesn't stand out enough.
+- Change the text colour to `text-blue-600 dark:text-blue-400` (only when it is a valid LinkedIn link). Keep the trailing `ExternalLink` icon.
+- When `linkedin_url` is missing, render name as plain `text-foreground` with no underline, exactly as it is now.
+- No additional icons, no logos, just a stronger colour + underline to signal the link.
 
-  SELECT * INTO v_row FROM public.allowed_emails WHERE email = v_email;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Access is invite-only';
-  END IF;
+## 4. Faster fit rating + click-count semantics — same file
 
-  INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, v_row.role)
-  ON CONFLICT DO NOTHING;
+The 1-second lag is `await updateCandidate(...)` + `qc.invalidateQueries(...)` triggering a full refetch before re-render. Fix:
 
-  IF v_row.role = 'client' AND v_row.client_id IS NOT NULL THEN
-    UPDATE public.clients
-       SET auth_user_id = NEW.id
-     WHERE id = v_row.client_id
-       AND auth_user_id IS NULL;
-  END IF;
+- **Optimistic update**: on click, `qc.setQueryData(["candidates", ad.id], ...)` patches the candidate in cache immediately; mutation runs in background; revert + toast on error.
+- **Click-count semantics**: replace cycle with count-within-window.
+  - `clickCountRef = useRef<Map<id, {count, timer}>>()`.
+  - On click: increment count, clear pending timer, set a fresh 400 ms timer. When timer fires, map count → fit:
+    - 1 → `weak`
+    - 2 → `medium`
+    - 3+ → `strong`
+  - Optimistic-update + mutate after the timer resolves.
+  - "Clear fit rating" lives in the three-dot menu (item above) to return to `unrated`.
+- Tooltip changes from "Click to cycle fit" to "1 = weak, 2 = medium, 3 = strong".
 
-  RETURN NEW;
-END;
-$$;
-```
+## 5. Password reset — `src/routes/login.tsx` + new `src/routes/reset-password.tsx`
 
-Net effect: you can invite any email domain via `allowed_emails` and test with gmail/outlook addresses.
+- **On the login form**: under "Sign in", a "Forgot password?" link toggles to a reset-request panel: email input + "Send reset link". Calls:
+  ```ts
+  supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+  ```
+  Toast: "If that email exists, a reset link has been sent." (don't leak existence).
+- **New public route `/reset-password`** (outside `_authenticated`): listens for `PASSWORD_RECOVERY` on `supabase.auth.onAuthStateChange`, shows a new-password form (with the same show/hide eye toggle), calls `supabase.auth.updateUser({ password })`, redirects to `/login` with a success toast.
 
-## 3. About the `info@` password
-
-I don't have access to it — Supabase stores passwords hashed, so neither admins nor I can read them. Options:
-- I add a one-click "Send password reset" admin action on the user (small extra scope), OR
-- You reset it yourself from Cloud → Users, OR
-- Use the existing reset flow if `/reset-password` is wired up.
-
-**Not included in this plan** — tell me which option you want and I'll add it as a follow-up.
+Works for `info@…` too — send a reset from the login page, set a new password, sign in normally.
 
 ## Files touched
-- `src/routes/login.tsx` — password eye toggle + remove domain whitelist + footer copy
-- One migration — replace `handle_new_user()` body
-
-## Verification
-- Sign in with `info@...`: lands on `/main` (or role-appropriate surface) without bouncing back to `/login`.
-- Eye toggle reveals/hides password text.
-- Add a personal gmail to `allowed_emails` → sign up succeeds (trigger no longer rejects).
-- Existing `@goldenpipitrecruiting.com` / `@mpshahhospital.org` accounts unaffected.
+- `src/routes/_authenticated.staff.jobs.$slug.tsx` — pagination, three-dot menu column, stronger link colour on name, optimistic fit + click-count
+- `src/routes/_authenticated/client.jobs.$slug.tsx` — pagination + stronger link colour on name
+- `src/routes/login.tsx` — "Forgot password?" link + inline reset-request panel
+- `src/routes/reset-password.tsx` — new public route for completing the reset
 
 ## Out of scope
-- Retrieving the `info@` password (impossible — needs reset).
-- Prompt 7 (sidebar search) / Prompt 8 (cleanup) — still queued.
+- Server-side per-page query (client-side slicing is fine for current list sizes).
+- Admin-triggered "send reset to this user" button in Settings — easy follow-up if needed.
+- Prompt 7 (sidebar search) / Prompt 8 (cleanup).
