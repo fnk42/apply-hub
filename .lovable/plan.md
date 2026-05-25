@@ -1,42 +1,71 @@
-## Add "Delete candidate" capability
+## Goal
 
-### What
+Lock the recruiter portal behind an admin-managed email allowlist. **Zero changes** to the public apply flow — `/`, `/apply/:slug`, and the resume upload path stay exactly as they are right now since the ad is live.
 
-Let an admin permanently delete a candidate (application + their activity events + their uploaded resume file) from the candidate detail page.
+## Answers chosen
 
-### Why
+- **Access model**: Admin invites by email (allowlist)
+- **Sign-in methods**: Keep Google + email/password
+- **Existing accounts**: Revoke all non-admin roles; re-grant manually
 
-Currently there's no way to remove test submissions, spam, duplicates, or candidates added by mistake. RLS already permits admins to delete applications — we just have no UI or server function for it.
+## Current users
 
-### Scope
+| Email | Roles now | After fix |
+|---|---|---|
+| felix@goldenpipitrecruiting.com | admin + member | unchanged |
+| felix.njenga@gmail.com | member (auto-granted) | **revoked** — add to allowlist if you want them back |
 
-- Admins only (matches existing `admins delete applications` RLS policy).
-- Hard delete: removes the `applications` row, its `application_events`, and the resume file in the `resumes` storage bucket if present.
-- Trigger from the candidate detail page (`/portal/<job>/<id>`) with a confirmation dialog — no accidental deletes.
+## Changes
 
-### Changes
+### 1. Database migration
 
-1. **`src/lib/candidates.functions.ts`** — add `deleteCandidate` server function:
-   - `requireSupabaseAuth` + admin role check (same pattern as `deleteClient`).
-   - Look up the application to grab `resume_url` and `job_ad_id` (for cache invalidation hint on client).
-   - Delete `application_events` for that application, delete the `applications` row, and best-effort delete the resume from the `resumes` bucket.
-   - Return `{ ok: true, job_ad_id }`.
+- **New `portal_invites` table**: `email` (citext, unique), `role` (`app_role`, default `member`), `invited_by`, `invited_at`, `accepted_at`, `accepted_user_id`. RLS: admin-only.
+- **Replace `handle_new_user()` trigger** so it looks the new user's email up in `portal_invites`:
+  - Match → insert the invited role into `user_roles`, stamp the invite as accepted.
+  - No match → insert nothing. The user exists in `auth.users` but has zero roles, so `/portal` redirects them to `/unauthorized`.
+- **New trigger on `portal_invites` INSERT**: if the invited email already has an auth user, grant the role immediately (covers the "invite added after they signed up" case).
+- **Revoke existing non-admin roles**: `DELETE FROM user_roles WHERE user_id <> '<felix-admin-uuid>' AND role <> 'admin'`. Felix's admin + member rows are untouched.
 
-2. **`src/routes/_authenticated.portal.$id.tsx`** — add a "Delete candidate" button:
-   - Place it in the header area next to the shortlist/fit controls, styled as `destructive` and visually de-emphasized (small, outline-destructive).
-   - Wrap in `AlertDialog` (already in the design system) with title "Delete this candidate?", body explaining it's permanent and removes the resume + activity log, and a red "Delete permanently" confirm.
-   - On confirm: call `deleteCandidate`, show toast, invalidate `["candidates"]`, and navigate back to the job ad page (using the candidate's `job_ad_id`) — or to `/portal/jobs` as a fallback.
-   - Only render the button when the current user has the `admin` role. Source the role from the existing `getPortalShell` query that's already in cache (sidebar uses it), so no extra round-trip.
+### 2. Admin UI — add an Invites section to `_authenticated.portal.admin.tsx`
 
-### Out of scope
+- List invites (email, role, status: pending/accepted, invited date).
+- "Add invite" form: email + role dropdown (`member` / `admin`).
+- "Revoke" button per invite: deletes the invite row AND any matching `user_roles` row in one server fn call.
+- Backed by two new server fns in `src/lib/admin.functions.ts` (`addPortalInvite`, `revokePortalInvite`), both gated by `requireSupabaseAuth` + admin-role check (same pattern as the existing `deleteCandidate`).
 
-- No "soft delete / archive" flow — user asked for delete, not archive. Can add later if needed.
-- No bulk delete from the candidates list. Single-record delete from detail page only.
-- No changes to RLS (already correct).
-- No changes to the public apply form or resume download flow.
+### 3. Login page (`src/routes/login.tsx`) — copy-only tweak
 
-### Technical notes
+- Keep Google button and email/password form intact.
+- Change the "Need an account? Sign up" affordance to "Need access? Contact your admin." Sign-in itself is unchanged; only the implicit "anyone can self-onboard" cue goes away. The real gate is the trigger.
 
-- The `application_events` table has no FK cascade, so we delete events explicitly before the application row (same pattern `deleteClient` uses).
-- Resume deletion is best-effort: if the storage call fails (file already gone, etc.) we still proceed with the DB delete and log the storage error server-side.
-- Admin check uses `supabase` (user-scoped client from middleware) querying `user_roles`, matching the existing pattern in `deleteClient` / `createClient`.
+### 4. Explicitly untouched
+
+- `src/routes/index.tsx` — public roles list. No changes.
+- `src/routes/apply.$slug.tsx` — public application form. No changes.
+- `src/lib/candidates.functions.ts` `getPublicJobAd`, `submitApplication`, `uploadPublicResume` — no changes.
+- `applications` table RLS policy `anyone can submit application` — stays.
+- `resumes` storage bucket policies — stay.
+- No `disable_signup` toggle on Supabase Auth. Account creation still works; we just don't auto-grant roles.
+
+## How it works end-to-end
+
+```text
+Public applicant → /apply/:slug → unchanged, works exactly as today
+                                  (no auth, no role check, just submits)
+
+New recruiter → admin adds their email to portal_invites
+              → recruiter signs in (Google or email/password)
+              → handle_new_user() trigger sees the invite, grants role
+              → /portal loads normally
+
+Random person → signs up with any email
+             → trigger finds no invite, grants no role
+             → /portal redirects them to /unauthorized
+             → recruiter data stays invisible (RLS also blocks them)
+```
+
+## Out of scope
+
+- Sending invite emails automatically (admin tells the person "go sign in" out of band).
+- 2FA / SSO.
+- Touching the public apply flow in any way.

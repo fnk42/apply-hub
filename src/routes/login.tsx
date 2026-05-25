@@ -32,7 +32,6 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
 
   const goToDestination = useCallback(() => {
@@ -70,22 +69,12 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/login` },
-        });
-        if (error) throw error;
-        toast.success("Check your email to confirm your account.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        goToDestination();
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      goToDestination();
     } catch (err: any) {
       toast.error(err?.message || "Sign-in failed");
     } finally {
@@ -174,19 +163,13 @@ function LoginPage() {
               disabled={loading}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {mode === "signup" ? "Create account" : "Sign in"}
+              Sign in
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-4 w-full text-sm text-muted-foreground hover:text-foreground"
-          >
-            {mode === "signin"
-              ? "Need an account? Sign up"
-              : "Have an account? Sign in"}
-          </button>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Access is invite-only. Need an account? Ask an admin to add you.
+          </p>
         </div>
       </div>
     </main>

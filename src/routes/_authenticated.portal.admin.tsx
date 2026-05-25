@@ -13,7 +13,29 @@ import {
   getAppSettings,
   updateAppSettings,
   listAllJobAds,
+  listInternalUsers,
+  inviteInternalUser,
+  setUserRole,
+  removeInternalUser,
 } from "@/lib/admin.functions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +61,11 @@ const jobAdsQ = queryOptions({
   staleTime: 30_000,
 });
 
+const teamQ = queryOptions({
+  queryKey: ["admin-team"],
+  queryFn: () => listInternalUsers(),
+});
+
 export function formatKES(amount: number | null | undefined): string {
   if (amount == null) return "—";
   return `KES ${Number(amount).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
@@ -54,6 +81,7 @@ export const Route = createFileRoute("/_authenticated/portal/admin")({
       context.queryClient.ensureQueryData(paymentsQ),
       context.queryClient.ensureQueryData(settingsQ),
       context.queryClient.ensureQueryData(jobAdsQ),
+      context.queryClient.ensureQueryData(teamQ),
     ]);
   },
   component: AdminPage,
@@ -80,6 +108,7 @@ function AdminPage() {
         <TabsList>
           <TabsTrigger value="jobs">Job Ads</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="jobs" className="mt-6">
@@ -87,6 +116,9 @@ function AdminPage() {
         </TabsContent>
         <TabsContent value="billing" className="mt-6">
           <BillingTab />
+        </TabsContent>
+        <TabsContent value="team" className="mt-6">
+          <TeamTab />
         </TabsContent>
         <TabsContent value="settings" className="mt-6">
           <SettingsTab />
@@ -408,6 +440,195 @@ function SettingsTab() {
       <Button onClick={save} disabled={busy}>
         {busy ? "Saving…" : "Save settings"}
       </Button>
+    </div>
+  );
+}
+
+function TeamTab() {
+  const { data } = useSuspenseQuery(teamQ);
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"admin" | "member">("member");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function invalidate() {
+    await qc.invalidateQueries({ queryKey: ["admin-team"] });
+  }
+
+  async function doInvite(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setBusy("invite");
+    try {
+      await inviteInternalUser({ data: { email: trimmed, role } });
+      toast.success(`Access granted to ${trimmed}`);
+      setEmail("");
+      await invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to grant access");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function doSetRole(userId: string, newRole: "admin" | "member") {
+    setBusy(userId);
+    try {
+      await setUserRole({ data: { user_id: userId, role: newRole } });
+      toast.success("Role updated");
+      await invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function doRemove(userId: string) {
+    setBusy(userId);
+    try {
+      await removeInternalUser({ data: { user_id: userId } });
+      toast.success("Access revoked");
+      await invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Grant portal access</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Only people you add here can sign in to the recruiter portal. Anyone
+          else who tries to log in (Google or email) will be denied. We'll send
+          them an email invite to set their password.
+        </p>
+        <form
+          onSubmit={doInvite}
+          className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
+        >
+          <div className="flex-1 space-y-1.5">
+            <Label htmlFor="invite-email">Email</Label>
+            <Input
+              id="invite-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="teammate@example.com"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Role</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as any)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="submit" disabled={busy === "invite"}>
+            {busy === "invite" ? "Granting…" : "Grant access"}
+          </Button>
+        </form>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-6 py-4">
+          <h2 className="text-base font-semibold">Team members</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Everyone with current access to the recruiter portal.
+          </p>
+        </div>
+        {data.users.length === 0 ? (
+          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+            No team members yet.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Last sign-in</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.users.map((u) => {
+                const currentRole = u.roles.includes("admin") ? "admin" : "member";
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.email}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={currentRole}
+                        onValueChange={(v) =>
+                          doSetRole(u.id, v as "admin" | "member")
+                        }
+                        disabled={busy === u.id}
+                      >
+                        <SelectTrigger className="w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {u.last_sign_in_at
+                        ? format(new Date(u.last_sign_in_at), "d MMM yyyy")
+                        : "Never"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy === u.id}
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            Revoke
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Revoke access?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {u.email} will no longer be able to sign in to
+                              the recruiter portal. Their auth account stays,
+                              but all roles are removed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => doRemove(u.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Revoke access
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }
