@@ -1,18 +1,18 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { getPortalShell } from "@/lib/candidates.functions";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { shellQuery } from "@/lib/portal-shell";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/portal/AppSidebar";
 import { NotificationBell } from "@/components/portal/NotificationBell";
 
-const shellQuery = queryOptions({
-  queryKey: ["portal-shell"],
-  queryFn: () => getPortalShell(),
-  staleTime: 30_000,
-});
-
 export const Route = createFileRoute("/_authenticated/portal")({
   beforeLoad: async ({ context }) => {
+    // Wait for the Supabase session to hydrate so the bearer token is
+    // attached when getPortalShell runs. Without this the first call races
+    // session restore and 401s, which then renders as /unauthorized.
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return; // parent _authenticated will redirect to /login
     const { roles } = await context.queryClient.ensureQueryData(shellQuery);
     const ok =
       roles.includes("admin") ||

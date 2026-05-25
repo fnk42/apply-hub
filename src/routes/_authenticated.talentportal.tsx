@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { shellQuery } from "@/lib/portal-shell";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/portal/AppSidebar";
@@ -7,6 +8,8 @@ import { NotificationBell } from "@/components/portal/NotificationBell";
 
 export const Route = createFileRoute("/_authenticated/talentportal")({
   beforeLoad: async ({ context }) => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return; // parent _authenticated handles the login redirect
     const { roles } = await context.queryClient.ensureQueryData(shellQuery);
     const ok =
       roles.includes("admin") ||

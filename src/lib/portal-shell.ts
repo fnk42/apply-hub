@@ -7,15 +7,13 @@ const EMPTY_SHELL = { appName: "Project Dashboard", roles: [] as string[], ads: 
 export const shellQuery = queryOptions({
   queryKey: ["portal-shell"],
   queryFn: async () => {
-    // Skip the protected RPC entirely when there is no session — avoids 401s
-    // on public pages (e.g. /login) after sign-out.
+    // Only short-circuit when there is genuinely no session (public pages
+    // like /login after sign-out). Otherwise call the real RPC and let
+    // errors propagate so we don't silently render an "unauthorized" UI.
     const { data } = await supabase.auth.getSession();
     if (!data.session) return EMPTY_SHELL;
-    try {
-      return await getPortalShell();
-    } catch {
-      return EMPTY_SHELL;
-    }
+    return await getPortalShell();
   },
   staleTime: 30_000,
+  retry: 1,
 });
