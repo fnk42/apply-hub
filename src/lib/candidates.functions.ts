@@ -177,6 +177,7 @@ const FIT_VALUES = ["unrated", "weak", "medium", "strong"] as const;
 const STATUS_VALUES = [
   "sourced",
   "scheduled_interview",
+  "hired",
   "rejected_screening",
   "candidate_declined",
 ] as const;
