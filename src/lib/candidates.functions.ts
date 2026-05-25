@@ -182,6 +182,14 @@ const STATUS_VALUES = [
   "candidate_declined",
 ] as const;
 
+function getAuthRedirectBaseUrl() {
+  return (
+    process.env.SITE_URL ||
+    process.env.PUBLIC_SITE_URL ||
+    "https://gptalentportal.com"
+  ).replace(/\/$/, "");
+}
+
 // ---- getMyRoles ----
 export const getMyRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -280,6 +288,7 @@ export const inviteClient = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const redirectBaseUrl = getAuthRedirectBaseUrl();
     const { data: roleRow } = await supabase
       .from("user_roles")
       .select("role")
@@ -304,7 +313,9 @@ export const inviteClient = createServerFn({ method: "POST" })
     if (allowErr) throw new Error(allowErr.message);
 
     const { data: invited, error: invErr } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
+      await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
+        redirectTo: `${redirectBaseUrl}/reset-password`,
+      });
     let authUserId = invited?.user?.id ?? null;
     let alreadyRegistered = false;
     if (invErr) {
@@ -323,12 +334,9 @@ export const inviteClient = createServerFn({ method: "POST" })
     }
     if (!authUserId) throw new Error("Failed to create user.");
     if (alreadyRegistered) {
-      const siteUrl =
-        process.env.SITE_URL ||
-        "https://joy-apply-engine.lovable.app";
       const { error: resetErr } = await supabaseAdmin.auth.resetPasswordForEmail(
         data.email,
-        { redirectTo: `${siteUrl}/reset-password` },
+        { redirectTo: `${redirectBaseUrl}/reset-password` },
       );
       if (resetErr) throw new Error(resetErr.message);
     }
@@ -796,14 +804,14 @@ export const createCandidate = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => createInput.parse(data))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    // Admin gate: members cannot add candidates manually
-    const { data: roleRow } = await supabase
+    const { data: roleRows } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    if (!roleRow) throw new Error("Only admins can add candidates.");
+      .in("role", ["admin", "member"]);
+    if (!(roleRows ?? []).length) {
+      throw new Error("Only internal users can add candidates.");
+    }
 
     // Force "Sourced" stage for manually-added candidates
     const { data: sourcedStage } = await supabase
