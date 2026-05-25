@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { company } from "@/config/company";
+import { getMyRoles } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,9 +41,23 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const goToDestination = useCallback(() => {
-    void navigate({ to: destination as any, replace: true });
-  }, [destination, navigate]);
+  const resolveDestination = useCallback(async (): Promise<string> => {
+    // If a specific redirect was requested (and isn't the default /portal), honor it
+    if (destination && destination !== "/portal") return destination;
+    try {
+      const { roles } = await getMyRoles();
+      if (roles.includes("admin") || roles.includes("member")) return "/portal";
+      if (roles.includes("client")) return "/portal/jobs/business-development-manager";
+      return "/unauthorized";
+    } catch {
+      return "/portal";
+    }
+  }, [destination]);
+
+  const goToDestination = useCallback(async () => {
+    const to = await resolveDestination();
+    void navigate({ to: to as any, replace: true });
+  }, [navigate, resolveDestination]);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,13 +73,15 @@ function LoginPage() {
         toast.error("Access is invite-only. Your email domain is not approved.");
         return;
       }
-      void navigate({ to: normalizeRedirect(destination) as any, replace: true });
+      const to = await resolveDestination();
+      if (cancelled) return;
+      void navigate({ to: to as any, replace: true });
     }
     forwardWhenAuthenticated();
     return () => {
       cancelled = true;
     };
-  }, [destination, navigate]);
+  }, [navigate, resolveDestination]);
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +89,7 @@ function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      goToDestination();
+      await goToDestination();
     } catch (err: any) {
       toast.error(err?.message || "Sign-in failed");
     } finally {
@@ -94,7 +111,7 @@ function LoginPage() {
         toast.error("Access is invite-only. Your email domain is not approved.");
         return;
       }
-      goToDestination();
+      await goToDestination();
     } catch (err: any) {
       toast.error(err?.message || "Google sign-in failed");
     } finally {

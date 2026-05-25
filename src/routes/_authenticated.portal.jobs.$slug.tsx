@@ -123,7 +123,7 @@ function JobAdDetailPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"all" | "strong" | "shortlist">("all");
+  const [tab, setTab] = useState<"all" | "strong" | "medium" | "shortlist">("all");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [jdExpanded, setJdExpanded] = useState(false);
@@ -134,6 +134,7 @@ function JobAdDetailPage() {
   const all = candData.candidates;
   const allCount = all.length;
   const strongCount = all.filter((c) => c.fit === "strong").length;
+  const mediumCount = all.filter((c) => c.fit === "medium").length;
   const shortlistCount = all.filter((c) => c.shortlisted).length;
 
   // Resolve a candidate's stage_id, falling back to legacy_status mapping if missing
@@ -145,6 +146,7 @@ function JobAdDetailPage() {
 
   const rows = all.filter((c) => {
     if (tab === "strong" && c.fit !== "strong") return false;
+    if (tab === "medium" && c.fit !== "medium") return false;
     if (tab === "shortlist" && !c.shortlisted) return false;
     if (stageFilter !== "all" && resolveStageId(c) !== stageFilter) return false;
     if (search) {
@@ -358,6 +360,12 @@ function JobAdDetailPage() {
               {strongCount}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="medium">
+            Medium fit{" "}
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
+              {mediumCount}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="shortlist">
             Shortlist{" "}
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
@@ -524,7 +532,7 @@ function NameCell({
       <a
         href={linkedinUrl}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
       >
@@ -563,7 +571,7 @@ function ShareLinkCard({ slug }: { slug: string }) {
         <Copy className="mr-1 h-4 w-4" /> Copy
       </Button>
       <Button asChild variant="outline" size="sm">
-        <a href={url} target="_blank" rel="noreferrer">
+        <a href={url} target="_blank" rel="noopener noreferrer">
           <ExternalLink className="mr-1 h-4 w-4" /> Open
         </a>
       </Button>
@@ -606,7 +614,7 @@ function JdPanel({
             <a
               href={ad.linkedin_job_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
             >
               <Linkedin className="h-3.5 w-3.5" /> LinkedIn
@@ -616,7 +624,7 @@ function JdPanel({
             <a
               href={ad.jd_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
             >
               <FileText className="h-3.5 w-3.5" /> JD link
