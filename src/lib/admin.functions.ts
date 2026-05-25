@@ -255,12 +255,6 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
 
-    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
-    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
-      throw new Error(
-        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
-      );
-    }
 
     // Pre-register on allowlist so the new-user trigger admits this email.
     const { error: allowErr } = await supabaseAdmin
@@ -423,12 +417,6 @@ export const addAllowedEmail = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
-    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
-    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
-      throw new Error(
-        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
-      );
-    }
     if (data.role === "client" && !data.client_id) {
       throw new Error("client_id is required for client role.");
     }
