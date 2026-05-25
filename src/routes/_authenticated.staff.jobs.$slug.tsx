@@ -190,14 +190,73 @@ function JobAdDetailPage() {
     }
   }
 
-  const daysLive = ad.authorized_at
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.now() - new Date(ad.authorized_at).getTime()) / 86400000,
-        ),
-      )
-    : null;
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [tab, stageFilter, search]);
+
+  const totalRows = rows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  type FitVal = "unrated" | "weak" | "medium" | "strong";
+  const candKey = ["candidates", "by-ad", ad.id] as const;
+  const clickRef = useRef<Map<string, { count: number; timer: ReturnType<typeof setTimeout> }>>(new Map());
+
+  function applyOptimistic(id: string, next: FitVal) {
+    qc.setQueryData(candKey, (old: any) => {
+      if (!old?.candidates) return old;
+      return {
+        ...old,
+        candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: c.fit, _prevFit: c.fit, fit_optimistic: next } : c)),
+      };
+    });
+    // simpler: just overwrite fit, remember previous for rollback
+    qc.setQueryData(candKey, (old: any) => {
+      if (!old?.candidates) return old;
+      return {
+        ...old,
+        candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: next } : c)),
+      };
+    });
+  }
+
+  async function commitFit(id: string, next: FitVal, prev: FitVal) {
+    try {
+      await updateCandidate({ data: { id, patch: { fit: next } } });
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+    } catch (e: any) {
+      // rollback
+      qc.setQueryData(candKey, (old: any) => {
+        if (!old?.candidates) return old;
+        return {
+          ...old,
+          candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: prev } : c)),
+        };
+      });
+      toast.error(e?.message || "Failed");
+    }
+  }
+
+  function bumpFit(id: string, currentFit: string) {
+    const entry = clickRef.current.get(id);
+    const count = (entry?.count ?? 0) + 1;
+    if (entry?.timer) clearTimeout(entry.timer);
+    const next: FitVal = count === 1 ? "weak" : count === 2 ? "medium" : "strong";
+    // optimistic preview after each click
+    applyOptimistic(id, next);
+    const timer = setTimeout(() => {
+      clickRef.current.delete(id);
+      void commitFit(id, next, currentFit as FitVal);
+    }, 400);
+    clickRef.current.set(id, { count, timer });
+  }
+
+  async function clearFit(id: string, currentFit: string) {
+    applyOptimistic(id, "unrated");
+    await commitFit(id, "unrated", currentFit as FitVal);
+  }
+
 
   async function toggleShortlist(id: string, current: boolean) {
     try {
