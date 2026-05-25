@@ -344,3 +344,119 @@ export const removeInternalUser = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ============ PAYMENT STATUS CYCLE ============
+
+export const setPaymentStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["pending", "paid", "void"]),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const patch: Record<string, any> = { status: data.status };
+    patch.paid_at = data.status === "paid" ? new Date().toISOString() : null;
+    const { error } = await supabaseAdmin
+      .from("payments")
+      .update(patch)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ============ ONE-OFF: RESET ADMIN PASSWORD ============
+// Reads ADMIN_RESET_PASSWORD env var and sets it as the password for
+// felix@goldenpipitrecruiting.com. Safe no-op if the env var is unset.
+
+export const resetAdminPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const pw = process.env.ADMIN_RESET_PASSWORD;
+    if (!pw || pw.length < 8) {
+      throw new Error("ADMIN_RESET_PASSWORD secret is not set (min 8 chars).");
+    }
+    const targetEmail = "felix@goldenpipitrecruiting.com";
+    const { data: list } = await supabaseAdmin.auth.admin.listUsers();
+    const user = list?.users?.find(
+      (u) => u.email?.toLowerCase() === targetEmail,
+    );
+    if (!user) throw new Error(`User ${targetEmail} not found.`);
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      password: pw,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, email: targetEmail };
+  });
+
+// ============ ALLOWED EMAILS ============
+
+export const listAllowedEmails = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { data, error } = await supabaseAdmin
+      .from("allowed_emails")
+      .select("email, role, client_id, created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return { allowed: data ?? [] };
+  });
+
+export const addAllowedEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        email: z.string().trim().email().max(255),
+        role: z.enum(["admin", "member", "client"]),
+        client_id: z.string().uuid().optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
+    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
+      throw new Error(
+        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
+      );
+    }
+    if (data.role === "client" && !data.client_id) {
+      throw new Error("client_id is required for client role.");
+    }
+    const { error } = await supabaseAdmin.from("allowed_emails").upsert(
+      {
+        email: data.email.toLowerCase(),
+        role: data.role,
+        client_id: data.role === "client" ? data.client_id : null,
+        invited_by: context.userId,
+      },
+      { onConflict: "email" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removeAllowedEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ email: z.string().trim().email().max(255) }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    if (data.email.toLowerCase() === "felix@goldenpipitrecruiting.com") {
+      throw new Error("Cannot remove the primary admin from the allowlist.");
+    }
+    const { error } = await supabaseAdmin
+      .from("allowed_emails")
+      .delete()
+      .eq("email", data.email.toLowerCase());
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
