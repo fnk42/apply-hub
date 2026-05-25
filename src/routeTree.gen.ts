@@ -41,6 +41,7 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 import { Route as AuthenticatedStaffJobsSlugRouteImport } from './routes/_authenticated.staff.jobs.$slug'
 import { Route as AuthenticatedMainJobsNewRouteImport } from './routes/_authenticated.main.jobs.new'
 import { Route as AuthenticatedMainClientsIdRouteImport } from './routes/_authenticated.main.clients.$id'
+import { Route as AuthenticatedClientJobsSlugRouteImport } from './routes/_authenticated/client.jobs.$slug'
 import { Route as AuthenticatedStaffJobsSlugStagesRouteImport } from './routes/_authenticated.staff.jobs.$slug.stages'
 import { Route as AuthenticatedStaffJobsSlugAddCandidateRouteImport } from './routes/_authenticated.staff.jobs.$slug.add-candidate'
 
@@ -220,6 +221,12 @@ const AuthenticatedMainClientsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedMainClientsRoute,
   } as any)
+const AuthenticatedClientJobsSlugRoute =
+  AuthenticatedClientJobsSlugRouteImport.update({
+    id: '/jobs/$slug',
+    path: '/jobs/$slug',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedStaffJobsSlugStagesRoute =
   AuthenticatedStaffJobsSlugStagesRouteImport.update({
     id: '/stages',
@@ -259,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/portal/': typeof AuthenticatedPortalIndexRoute
   '/staff/': typeof AuthenticatedStaffIndexRoute
   '/talentportal/': typeof AuthenticatedTalentportalIndexRoute
+  '/client/jobs/$slug': typeof AuthenticatedClientJobsSlugRoute
   '/main/clients/$id': typeof AuthenticatedMainClientsIdRoute
   '/main/jobs/new': typeof AuthenticatedMainJobsNewRoute
   '/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
@@ -289,6 +297,7 @@ export interface FileRoutesByTo {
   '/portal': typeof AuthenticatedPortalIndexRoute
   '/staff': typeof AuthenticatedStaffIndexRoute
   '/talentportal': typeof AuthenticatedTalentportalIndexRoute
+  '/client/jobs/$slug': typeof AuthenticatedClientJobsSlugRoute
   '/main/clients/$id': typeof AuthenticatedMainClientsIdRoute
   '/main/jobs/new': typeof AuthenticatedMainJobsNewRoute
   '/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
@@ -326,6 +335,7 @@ export interface FileRoutesById {
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
   '/_authenticated/staff/': typeof AuthenticatedStaffIndexRoute
   '/_authenticated/talentportal/': typeof AuthenticatedTalentportalIndexRoute
+  '/_authenticated/client/jobs/$slug': typeof AuthenticatedClientJobsSlugRoute
   '/_authenticated/main/clients/$id': typeof AuthenticatedMainClientsIdRoute
   '/_authenticated/main/jobs/new': typeof AuthenticatedMainJobsNewRoute
   '/_authenticated/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/staff/'
     | '/talentportal/'
+    | '/client/jobs/$slug'
     | '/main/clients/$id'
     | '/main/jobs/new'
     | '/staff/jobs/$slug'
@@ -393,6 +404,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/staff'
     | '/talentportal'
+    | '/client/jobs/$slug'
     | '/main/clients/$id'
     | '/main/jobs/new'
     | '/staff/jobs/$slug'
@@ -429,6 +441,7 @@ export interface FileRouteTypes {
     | '/_authenticated/portal/'
     | '/_authenticated/staff/'
     | '/_authenticated/talentportal/'
+    | '/_authenticated/client/jobs/$slug'
     | '/_authenticated/main/clients/$id'
     | '/_authenticated/main/jobs/new'
     | '/_authenticated/staff/jobs/$slug'
@@ -675,6 +688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMainClientsIdRouteImport
       parentRoute: typeof AuthenticatedMainClientsRoute
     }
+    '/_authenticated/client/jobs/$slug': {
+      id: '/_authenticated/client/jobs/$slug'
+      path: '/jobs/$slug'
+      fullPath: '/client/jobs/$slug'
+      preLoaderRoute: typeof AuthenticatedClientJobsSlugRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/staff/jobs/$slug/stages': {
       id: '/_authenticated/staff/jobs/$slug/stages'
       path: '/stages'
@@ -694,10 +714,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedClientRouteChildren {
   AuthenticatedClientIndexRoute: typeof AuthenticatedClientIndexRoute
+  AuthenticatedClientJobsSlugRoute: typeof AuthenticatedClientJobsSlugRoute
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientIndexRoute: AuthenticatedClientIndexRoute,
+  AuthenticatedClientJobsSlugRoute: AuthenticatedClientJobsSlugRoute,
 }
 
 const AuthenticatedClientRouteWithChildren =

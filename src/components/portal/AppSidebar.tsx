@@ -84,29 +84,48 @@ export function AppSidebar() {
 
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {items.map((a) => (
-                    <SidebarMenuItem key={a.id}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === `/staff/jobs/${a.slug}`}
-                      >
-                        <Link
-                          to="/staff/jobs/$slug"
-                          params={{ slug: a.slug }}
-                          className="flex items-center gap-2"
-                        >
-                          <Briefcase className="h-4 w-4" />
-                          <span className="truncate">{a.title}</span>
-                          {a.count > 0 && (
-                            <span className="ml-auto rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[10px] tabular-nums text-sidebar-accent-foreground">
-                              {a.count}
-                            </span>
+                  {items.map((a) => {
+                    const jobPath = isInternal
+                      ? `/staff/jobs/${a.slug}`
+                      : `/client/jobs/${a.slug}`;
+                    return (
+                      <SidebarMenuItem key={a.id}>
+                        <SidebarMenuButton asChild isActive={pathname === jobPath}>
+                          {isInternal ? (
+                            <Link
+                              to="/staff/jobs/$slug"
+                              params={{ slug: a.slug }}
+                              className="flex items-center gap-2"
+                            >
+                              <Briefcase className="h-4 w-4" />
+                              <span className="truncate">{a.title}</span>
+                              {a.count > 0 && (
+                                <span className="ml-auto rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[10px] tabular-nums text-sidebar-accent-foreground">
+                                  {a.count}
+                                </span>
+                              )}
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/client/jobs/$slug"
+                              params={{ slug: a.slug }}
+                              className="flex items-center gap-2"
+                            >
+                              <Briefcase className="h-4 w-4" />
+                              <span className="truncate">{a.title}</span>
+                              {a.count > 0 && (
+                                <span className="ml-auto rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[10px] tabular-nums text-sidebar-accent-foreground">
+                                  {a.count}
+                                </span>
+                              )}
+                            </Link>
                           )}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
+
               </SidebarGroupContent>
             </SidebarGroup>
           );

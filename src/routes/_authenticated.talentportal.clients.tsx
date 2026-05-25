@@ -7,14 +7,15 @@ export const Route = createFileRoute("/_authenticated/talentportal/clients")({
     if (!roles.includes("client") && !roles.includes("admin")) {
       throw redirect({ to: "/unauthorized" });
     }
+    const isClient = roles.includes("client") && !roles.includes("admin");
     const firstLive = ads.find((a) => a.status === "live") ?? ads[0];
     if (firstLive) {
       throw redirect({
-        to: "/staff/jobs/$slug",
+        to: isClient ? "/client/jobs/$slug" : "/staff/jobs/$slug",
         params: { slug: firstLive.slug },
       });
     }
-    throw redirect({ to: "/staff/jobs" });
+    throw redirect({ to: isClient ? "/client" : "/staff/jobs" });
   },
   component: () => null,
 });
