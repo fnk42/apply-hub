@@ -123,7 +123,7 @@ function JobAdDetailPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"all" | "strong" | "shortlist">("all");
+  const [tab, setTab] = useState<"all" | "strong" | "medium" | "shortlist">("all");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [jdExpanded, setJdExpanded] = useState(false);
