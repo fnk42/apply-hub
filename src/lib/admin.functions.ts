@@ -254,6 +254,27 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
+
+    const domain = data.email.split("@")[1]?.toLowerCase() ?? "";
+    if (!["goldenpipitrecruiting.com", "mpshahhospital.org"].includes(domain)) {
+      throw new Error(
+        "Email domain is not approved. Allowed: goldenpipitrecruiting.com, mpshahhospital.org.",
+      );
+    }
+
+    // Pre-register on allowlist so the new-user trigger admits this email.
+    const { error: allowErr } = await supabaseAdmin
+      .from("allowed_emails")
+      .upsert(
+        {
+          email: data.email.toLowerCase(),
+          role: data.role,
+          invited_by: context.userId,
+        },
+        { onConflict: "email" },
+      );
+    if (allowErr) throw new Error(allowErr.message);
+
     const { data: invited, error: invErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     let authUserId = invited?.user?.id ?? null;
