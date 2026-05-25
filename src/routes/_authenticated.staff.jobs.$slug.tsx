@@ -21,7 +21,7 @@ import {
   updateCandidate,
 } from "@/lib/candidates.functions";
 import { openResumeInNewTab } from "@/lib/open-resume";
-import { setJobAdStatus } from "@/lib/jobs.functions";
+import { setJobAdStatus, updateJobAd } from "@/lib/jobs.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
