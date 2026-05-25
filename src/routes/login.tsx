@@ -163,19 +163,13 @@ function LoginPage() {
               disabled={loading}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {mode === "signup" ? "Create account" : "Sign in"}
+              Sign in
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-4 w-full text-sm text-muted-foreground hover:text-foreground"
-          >
-            {mode === "signin"
-              ? "Need an account? Sign up"
-              : "Have an account? Sign in"}
-          </button>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Access is invite-only. Need an account? Ask an admin to add you.
+          </p>
         </div>
       </div>
     </main>
