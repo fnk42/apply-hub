@@ -1,119 +1,80 @@
-## Prompt 6 — `/main` Admin Dashboard
+# Prompt 6.5 — Login UX + open up invite gate + fix sign-in bounce
 
-**Goal:** Replace the placeholder `/main` page with a real admin overview. One server round trip, mixing big numbers with charts and a recent-activity feed.
+Three small, related fixes. No new routes, no new tables.
 
----
+## 1. Password visibility toggle (`src/routes/login.tsx`)
 
-### Widgets (final list)
+- `const [showPassword, setShowPassword] = useState(false)`.
+- Password `<Input>` `type` becomes `showPassword ? "text" : "password"`.
+- Wrap input in a `relative` div; absolute ghost button on the right toggles state.
+- `Eye` / `EyeOff` from `lucide-react` (already a dep).
+- `aria-label`, `tabIndex={-1}` so it doesn't steal tab order from the submit button.
 
-**Top row — KPI tiles (StatCard):**
-1. **Open jobs** — count of `job_ads` where `status = 'live'` and `archived_at IS NULL`
-2. **Live applications** — count of `applications` joined to live ads
-3. **Candidates added this week** — `applications` with `created_at >= date_trunc('week', now())`
-4. **Shortlisted** — `applications` where `shortlisted = true` AND parent ad is live
+## 2. Remove the domain whitelist (two places)
 
-**Second row — Revenue tiles (StatCard, currency formatted in KES):**
-5. **Revenue this month** — `sum(payments.amount)` where `status = 'paid'` AND `paid_at >= date_trunc('month', now())`
-6. **Revenue this quarter** — same, `date_trunc('quarter', now())`
-7. **Revenue this year** — same, `date_trunc('year', now())`
+### a) Client — `src/routes/login.tsx`
+Delete `ALLOWED_DOMAINS`, `isAllowedDomain()`, and the `if (!isAllowedDomain(...)) { signOut(); toast.error(...) }` branch inside the session `useEffect`. Also drop the footer line "Approved domains: ...".
 
-**Charts row (2-col grid on desktop, stacked on mobile):**
-8. **Pipeline funnel** — reuse existing `PipelineFunnel` component. Aggregate `applications.pipeline_status` (or resolved `stage_id`) across all live ads.
-9. **Top clients by open roles** — horizontal bar chart (recharts, already in deps). Top 5 clients ranked by sum of `roles_count` from their live `job_ads`. Each row links to `/main/clients/{id}`.
+**This also fixes the `info@...` bounce.** Right now: sign in succeeds → navigate to `/main` → login page's session effect fires → email domain isn't on the whitelist → `supabase.auth.signOut()` → `_authenticated` sees no session → kicks back to `/login`. Removing the whitelist removes the bounce.
 
-**Bottom row (2-col):**
-10. **Recent activity** — reuse existing `RecentActivity` component, last 10 events from `application_events`.
-11. **Revenue trend** — small recharts line chart, monthly paid revenue for the trailing 12 months. Gives the "chats plus numbers" mix you asked for.
+### b) Server — `public.handle_new_user()` (migration)
+Drop the hard-coded domain check. Keep the `allowed_emails` lookup — that's still the real invite gate, so an arbitrary stranger still can't sign up.
 
----
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_email citext;
+  v_row   public.allowed_emails%ROWTYPE;
+BEGIN
+  v_email := lower(NEW.email)::citext;
 
-### New server function
+  SELECT * INTO v_row FROM public.allowed_emails WHERE email = v_email;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Access is invite-only';
+  END IF;
 
-**`src/lib/admin.functions.ts`** (file exists — add one export, do not refactor existing ones)
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (NEW.id, v_row.role)
+  ON CONFLICT DO NOTHING;
 
-```ts
-export const getAdminDashboard = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    // Role gate: admin only
-    const { supabase, userId } = context;
-    const { data: roles } = await supabase
-      .from("user_roles").select("role").eq("user_id", userId);
-    if (!roles?.some(r => r.role === "admin")) throw new Error("Forbidden");
+  IF v_row.role = 'client' AND v_row.client_id IS NOT NULL THEN
+    UPDATE public.clients
+       SET auth_user_id = NEW.id
+     WHERE id = v_row.client_id
+       AND auth_user_id IS NULL;
+  END IF;
 
-    // Run all reads in parallel using supabaseAdmin (RLS-bypassing) since
-    // the gate above already confirmed admin. Returns plain DTO:
-    return {
-      kpis: {
-        openJobs, liveApplications, candidatesThisWeek, shortlisted,
-      },
-      revenue: {
-        month, quarter, year,
-        trend: [{ month: "2025-06", amount: 12000 }, ...12 entries],
-      },
-      funnel: [{ stage: "Sourced", count: 42 }, ...],
-      topClients: [{ id, name, openRoles: 5 }, ...top 5],
-      recentActivity: [...last 10 events with actor + ad title joined],
-    };
-  });
+  RETURN NEW;
+END;
+$$;
 ```
 
-All aggregation done in 5-6 parallel `supabase.from(...).select(...)` calls + in-memory roll-up. No new SQL views, no DB changes.
+Net effect: you can invite any email domain via `allowed_emails` and test with gmail/outlook addresses.
 
----
+## 3. About the `info@` password
 
-### New / edited files
+I don't have access to it — Supabase stores passwords hashed, so neither admins nor I can read them. Options:
+- I add a one-click "Send password reset" admin action on the user (small extra scope), OR
+- You reset it yourself from Cloud → Users, OR
+- Use the existing reset flow if `/reset-password` is wired up.
 
-**Replace:**
-- `src/routes/_authenticated.main.index.tsx` — currently redirects to `/talentportal/main`. Replace with a real dashboard component that loads `adminDashboardQuery` via `ensureQueryData` + `useSuspenseQuery`.
+**Not included in this plan** — tell me which option you want and I'll add it as a follow-up.
 
-**Edit:**
-- `src/lib/admin.functions.ts` — append `getAdminDashboard` (single new export).
+## Files touched
+- `src/routes/login.tsx` — password eye toggle + remove domain whitelist + footer copy
+- One migration — replace `handle_new_user()` body
 
-**New (small component):**
-- `src/components/portal/TopClientsChart.tsx` — recharts horizontal bar.
-- `src/components/portal/RevenueTrendChart.tsx` — recharts line.
+## Verification
+- Sign in with `info@...`: lands on `/main` (or role-appropriate surface) without bouncing back to `/login`.
+- Eye toggle reveals/hides password text.
+- Add a personal gmail to `allowed_emails` → sign up succeeds (trigger no longer rejects).
+- Existing `@goldenpipitrecruiting.com` / `@mpshahhospital.org` accounts unaffected.
 
-**Untouched:** `StatCard`, `PipelineFunnel`, `RecentActivity`, `AppSidebar`, `_authenticated.main.tsx` layout, all DB tables, RLS, login.
-
----
-
-### Layout sketch
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  Admin overview                                             │
-├──────────┬──────────┬──────────┬──────────┐
-│ Open jobs│ Live apps│ This wk  │Shortlist │  ← KPI tiles
-├──────────┼──────────┼──────────┤
-│ Rev MTD  │ Rev QTD  │ Rev YTD  │           ← Revenue tiles
-├──────────┴──────────┼──────────┴──────────┤
-│  Pipeline funnel    │  Top clients (bar)  │  ← Charts
-├─────────────────────┼─────────────────────┤
-│  Recent activity    │  Revenue trend      │  ← Mix
-└─────────────────────┴─────────────────────┘
-```
-
----
-
-### Guardrails followed
-
-- ✅ One server-fn round trip per page (single `getAdminDashboard`).
-- ✅ Auth gate stays in `_authenticated.tsx` + `_authenticated.main.tsx` (admin-only); the server fn re-checks server-side.
-- ✅ No DB migration, no new RLS, no new auth, no new providers.
-- ✅ `recharts` already in deps (used by `src/components/ui/chart.tsx`) — no new packages.
-- ✅ Public `/apply/$slug` flow untouched.
-
----
-
-### Verification
-
-- Log in as admin → land on `/main` → see all 4 KPI tiles, 3 revenue tiles, funnel, top-clients bar, activity feed, revenue trend line.
-- Numbers match a manual `SELECT count(*)` spot check on `job_ads`, `applications`, `payments`.
-- Member logs in → unchanged (still redirects to `/staff`).
-- Client logs in → unchanged (still redirects to `/client`).
-- Network tab: exactly one `getAdminDashboard` request on page load.
-
----
-
-**Files touched:** 1 server fn appended, 1 route replaced, 2 small chart components added = 4 files. No DB changes. No new dependencies.
+## Out of scope
+- Retrieving the `info@` password (impossible — needs reset).
+- Prompt 7 (sidebar search) / Prompt 8 (cleanup) — still queued.

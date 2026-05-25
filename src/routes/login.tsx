@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { company } from "@/config/company";
 import { getPortalShell } from "@/lib/candidates.functions";
@@ -7,14 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-
-const ALLOWED_DOMAINS = ["goldenpipitrecruiting.com", "mpshahhospital.org"];
-
-function isAllowedDomain(email: string | null | undefined) {
-  if (!email) return false;
-  const domain = email.split("@")[1]?.toLowerCase();
-  return !!domain && ALLOWED_DOMAINS.includes(domain);
-}
 
 function normalizeRedirect(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "";
@@ -45,6 +38,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const resolveDestination = useCallback(async (): Promise<string> => {
@@ -77,11 +71,6 @@ function LoginPage() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (cancelled || !session) return;
-      if (!isAllowedDomain(session.user.email)) {
-        await supabase.auth.signOut();
-        toast.error("Access is invite-only. Your email domain is not approved.");
-        return;
-      }
       const to = await resolveDestination();
       if (!cancelled) void navigate({ to: to as any, replace: true });
     })();
@@ -123,7 +112,26 @@ function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
               Sign in
@@ -131,7 +139,7 @@ function LoginPage() {
           </form>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Access is invite-only. Approved domains: goldenpipitrecruiting.com, mpshahhospital.org.
+            Access is invite-only.
           </p>
         </div>
       </div>
