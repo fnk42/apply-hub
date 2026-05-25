@@ -81,6 +81,7 @@ export const Route = createFileRoute("/_authenticated/portal/admin")({
       context.queryClient.ensureQueryData(paymentsQ),
       context.queryClient.ensureQueryData(settingsQ),
       context.queryClient.ensureQueryData(jobAdsQ),
+      context.queryClient.ensureQueryData(teamQ),
     ]);
   },
   component: AdminPage,
