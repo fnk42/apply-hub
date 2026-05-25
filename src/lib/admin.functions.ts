@@ -272,9 +272,11 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
     const { data: invited, error: invErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     let authUserId = invited?.user?.id ?? null;
+    let alreadyRegistered = false;
     if (invErr) {
       const msg = invErr.message?.toLowerCase() ?? "";
       if (msg.includes("already") || msg.includes("registered")) {
+        alreadyRegistered = true;
         const { data: list } = await supabaseAdmin.auth.admin.listUsers();
         const found = list?.users?.find(
           (u) => u.email?.toLowerCase() === data.email.toLowerCase(),
@@ -285,6 +287,18 @@ export const inviteInternalUser = createServerFn({ method: "POST" })
         throw new Error(invErr.message);
       }
     }
+    if (alreadyRegistered) {
+      // User already exists — send a password reset so they get a fresh link.
+      const siteUrl =
+        process.env.SITE_URL ||
+        "https://joy-apply-engine.lovable.app";
+      const { error: resetErr } = await supabaseAdmin.auth.resetPasswordForEmail(
+        data.email,
+        { redirectTo: `${siteUrl}/reset-password` },
+      );
+      if (resetErr) throw new Error(resetErr.message);
+    }
+
     if (!authUserId) throw new Error("Failed to create user.");
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
