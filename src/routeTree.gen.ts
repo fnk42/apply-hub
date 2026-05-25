@@ -37,6 +37,7 @@ import { Route as AuthenticatedMainSettingsRouteImport } from './routes/_authent
 import { Route as AuthenticatedMainClientsRouteImport } from './routes/_authenticated.main.clients'
 import { Route as AuthenticatedMainAdminRouteImport } from './routes/_authenticated.main.admin'
 import { Route as AuthenticatedStaffJobsIndexRouteImport } from './routes/_authenticated.staff.jobs.index'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as AuthenticatedStaffJobsSlugRouteImport } from './routes/_authenticated.staff.jobs.$slug'
@@ -199,6 +200,12 @@ const AuthenticatedStaffJobsIndexRoute =
     path: '/jobs/',
     getParentRoute: () => AuthenticatedStaffRoute,
   } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
   id: '/lovable/email/auth/webhook',
   path: '/lovable/email/auth/webhook',
@@ -279,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/staff/jobs/': typeof AuthenticatedStaffJobsIndexRoute
   '/staff/jobs/$slug/add-candidate': typeof AuthenticatedStaffJobsSlugAddCandidateRoute
   '/staff/jobs/$slug/stages': typeof AuthenticatedStaffJobsSlugStagesRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/staff/jobs': typeof AuthenticatedStaffJobsIndexRoute
   '/staff/jobs/$slug/add-candidate': typeof AuthenticatedStaffJobsSlugAddCandidateRoute
   '/staff/jobs/$slug/stages': typeof AuthenticatedStaffJobsSlugStagesRoute
@@ -350,6 +359,7 @@ export interface FileRoutesById {
   '/_authenticated/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/_authenticated/staff/jobs/': typeof AuthenticatedStaffJobsIndexRoute
   '/_authenticated/staff/jobs/$slug/add-candidate': typeof AuthenticatedStaffJobsSlugAddCandidateRoute
   '/_authenticated/staff/jobs/$slug/stages': typeof AuthenticatedStaffJobsSlugStagesRoute
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/staff/jobs/$slug'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/queue/process'
     | '/staff/jobs/'
     | '/staff/jobs/$slug/add-candidate'
     | '/staff/jobs/$slug/stages'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/staff/jobs/$slug'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/queue/process'
     | '/staff/jobs'
     | '/staff/jobs/$slug/add-candidate'
     | '/staff/jobs/$slug/stages'
@@ -459,6 +471,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff/jobs/$slug'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/queue/process'
     | '/_authenticated/staff/jobs/'
     | '/_authenticated/staff/jobs/$slug/add-candidate'
     | '/_authenticated/staff/jobs/$slug/stages'
@@ -473,6 +486,7 @@ export interface RootRouteChildren {
   ApplySlugRoute: typeof ApplySlugRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -672,6 +686,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/staff/jobs/'
       preLoaderRoute: typeof AuthenticatedStaffJobsIndexRouteImport
       parentRoute: typeof AuthenticatedStaffRoute
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/lovable/email/auth/webhook': {
       id: '/lovable/email/auth/webhook'
@@ -882,7 +903,18 @@ const rootRouteChildren: RootRouteChildren = {
   ApplySlugRoute: ApplySlugRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
