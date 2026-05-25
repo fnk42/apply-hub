@@ -17,12 +17,12 @@ const activityQuery = queryOptions({
   queryFn: () => listActivity({ data: {} }),
 });
 
-export const Route = createFileRoute("/_authenticated/portal/activity")({
+export const Route = createFileRoute("/_authenticated/staff/activity")({
   beforeLoad: async () => {
     const { roles } = await getMyRoles();
     if (!roles.includes("admin")) {
       throw redirect({
-        to: "/portal/jobs/$slug",
+        to: "/staff/jobs/$slug",
         params: { slug: "business-development-manager" },
       });
     }
@@ -153,7 +153,7 @@ function ActivityPage() {
                         {EVENT_LABELS[ev.event_type] ?? ev.event_type}
                       </span>{" "}
                       <Link
-                        to="/portal/$id"
+                        to="/staff/$id"
                         params={{ id: ev.application_id }}
                         className="font-medium text-primary hover:underline"
                       >

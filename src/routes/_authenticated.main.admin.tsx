@@ -70,7 +70,7 @@ export function formatKES(amount: number | null | undefined): string {
   return `KES ${Number(amount).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
 }
 
-export const Route = createFileRoute("/_authenticated/portal/admin")({
+export const Route = createFileRoute("/_authenticated/main/admin")({
   beforeLoad: async () => {
     const { roles } = await getMyRoles();
     if (!roles.includes("admin")) throw redirect({ to: "/portal" });
@@ -97,7 +97,7 @@ function AdminPage() {
           </p>
         </div>
         <Link
-          to="/portal/jobs/new"
+          to="/staff/jobs/new"
           className="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90"
         >
           + New job ad
@@ -195,7 +195,7 @@ function JobAdsTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Link
-                      to="/portal/jobs/$slug"
+                      to="/staff/jobs/$slug"
                       params={{ slug: a.slug }}
                       className="text-sm text-primary hover:underline"
                     >

@@ -43,7 +43,7 @@ const usersQ = queryOptions({
   queryFn: () => listInternalUsers(),
 });
 
-export const Route = createFileRoute("/_authenticated/portal/settings")({
+export const Route = createFileRoute("/_authenticated/main/settings")({
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(rolesQ);
   },

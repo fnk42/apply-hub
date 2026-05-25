@@ -58,12 +58,13 @@ export function AppSidebar() {
   const isAdmin = roles.includes("admin");
   const isInternal = isAdmin || roles.includes("member");
   const ads = allAds;
-
+  // Surface root for the header link.
+  const home = isAdmin ? "/main" : isInternal ? "/staff" : "/client";
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
-        <Link to="/portal" className="flex flex-col leading-tight">
+        <Link to={home} className="flex flex-col leading-tight">
           <span className="font-serif text-lg tracking-tight text-sidebar-foreground">
             {appName}
           </span>
@@ -87,10 +88,10 @@ export function AppSidebar() {
                     <SidebarMenuItem key={a.id}>
                       <SidebarMenuButton
                         asChild
-                        isActive={pathname === `/portal/jobs/${a.slug}`}
+                        isActive={pathname === `/staff/jobs/${a.slug}`}
                       >
                         <Link
-                          to="/portal/jobs/$slug"
+                          to="/staff/jobs/$slug"
                           params={{ slug: a.slug }}
                           className="flex items-center gap-2"
                         >
@@ -116,36 +117,32 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/portal/activity")}>
-                    <Link to="/portal/activity" className="flex items-center gap-2">
+                  <SidebarMenuButton asChild isActive={isActive("/staff/activity")}>
+                    <Link to="/staff/activity" className="flex items-center gap-2">
                       <Activity className="h-4 w-4" />
                       <span>Activity Log</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {isAdmin && (
-                  <>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={isActive("/portal/clients")}>
-                        <Link to="/portal/clients" className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4" />
-                          <span>Clients</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={isActive("/portal/admin")}>
-                        <Link to="/portal/admin" className="flex items-center gap-2">
-                          <ShieldCheck className="h-4 w-4" />
-                          <span>Admin</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </>
-                )}
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/portal/settings")}>
-                    <Link to="/portal/settings" className="flex items-center gap-2">
+                  <SidebarMenuButton asChild isActive={isActive("/main/clients")}>
+                    <Link to="/main/clients" className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      <span>Clients</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/main/admin")}>
+                    <Link to="/main/admin" className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Admin</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/main/settings")}>
+                    <Link to="/main/settings" className="flex items-center gap-2">
                       <SettingsIcon className="h-4 w-4" />
                       <span>Settings</span>
                     </Link>

@@ -17,7 +17,7 @@ const rolesQuery = queryOptions({
   staleTime: 60_000,
 });
 
-export const Route = createFileRoute("/_authenticated/portal/jobs/")({
+export const Route = createFileRoute("/_authenticated/staff/jobs/")({
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(shellQuery),
@@ -48,7 +48,7 @@ function JobsIndexPage() {
         </div>
         {isAdmin && (
           <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Link to="/portal/jobs/new">
+            <Link to="/staff/jobs/new">
               <Plus className="mr-1 h-4 w-4" /> New job ad
             </Link>
           </Button>
@@ -73,7 +73,7 @@ function JobsIndexPage() {
                   {items.map((a) => (
                     <Link
                       key={a.id}
-                      to="/portal/jobs/$slug"
+                      to="/staff/jobs/$slug"
                       params={{ slug: a.slug }}
                       className={cn(
                         "group rounded-lg border border-border bg-card p-5 transition hover:border-accent",

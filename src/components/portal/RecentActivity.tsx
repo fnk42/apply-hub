@@ -58,7 +58,7 @@ export function RecentActivity({ events }: { events: Event[] }) {
                     <span className="font-medium text-foreground">{actor}</span>{" "}
                     <span className="text-muted-foreground">{verbFor(ev.event_type)}</span>{" "}
                     <Link
-                      to="/portal/$id"
+                      to="/staff/$id"
                       params={{ id: ev.application_id }}
                       className="font-medium text-primary hover:underline"
                     >

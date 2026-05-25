@@ -34,7 +34,7 @@ const rolesQ = queryOptions({
   queryFn: () => getMyRoles(),
 });
 
-export const Route = createFileRoute("/_authenticated/portal/jobs/new")({
+export const Route = createFileRoute("/_authenticated/main/jobs/new")({
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(rolesQ);
   },
@@ -53,7 +53,7 @@ function slugify(input: string): string {
 function NewJobAdPage() {
   const { data: rolesData } = useSuspenseQuery(rolesQ);
   if (!rolesData.roles.includes("admin")) {
-    return <Navigate to="/portal/jobs" />;
+    return <Navigate to="/staff/jobs" />;
   }
   return <NewJobAdForm />;
 }
@@ -133,7 +133,7 @@ function NewJobAdForm() {
         },
       });
       toast.success("Job ad created");
-      navigate({ to: "/portal/jobs/$slug", params: { slug: res.slug } });
+      navigate({ to: "/staff/jobs/$slug", params: { slug: res.slug } });
     } catch (err: any) {
       toast.error(err?.message || "Failed to create job ad");
     } finally {
@@ -144,7 +144,7 @@ function NewJobAdForm() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <Link
-        to="/portal/jobs"
+        to="/staff/jobs"
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="mr-1 h-4 w-4" /> Back to job ads
@@ -309,7 +309,7 @@ function NewJobAdForm() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate({ to: "/portal/jobs" })}
+            onClick={() => navigate({ to: "/staff/jobs" })}
           >
             Cancel
           </Button>
