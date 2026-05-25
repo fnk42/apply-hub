@@ -18,12 +18,12 @@ import { Route as AuthenticatedTalentportalRouteImport } from './routes/_authent
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated.staff'
 import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated.portal'
 import { Route as AuthenticatedMainRouteImport } from './routes/_authenticated.main'
-import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated.client'
+import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated/client'
 import { Route as AuthenticatedTalentportalIndexRouteImport } from './routes/_authenticated.talentportal.index'
 import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated.staff.index'
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
 import { Route as AuthenticatedMainIndexRouteImport } from './routes/_authenticated.main.index'
-import { Route as AuthenticatedClientIndexRouteImport } from './routes/_authenticated.client.index'
+import { Route as AuthenticatedClientIndexRouteImport } from './routes/_authenticated/client.index'
 import { Route as AuthenticatedTalentportalStaffRouteImport } from './routes/_authenticated.talentportal.staff'
 import { Route as AuthenticatedTalentportalMainRouteImport } from './routes/_authenticated.talentportal.main'
 import { Route as AuthenticatedTalentportalClientsRouteImport } from './routes/_authenticated.talentportal.clients'
@@ -845,3 +845,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
