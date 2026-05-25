@@ -102,7 +102,7 @@ function LoginPage() {
     setResetBusy(true);
     try {
       await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: "https://gptalentportal.com/reset-password",
       });
       toast.success("If that email exists, a reset link has been sent.");
       setMode("signin");
