@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FitBadge } from "@/components/portal/Badges";
+import { FitBadge, stageBadgeClass } from "@/components/portal/Badges";
 import {
   ChevronDown,
   ChevronUp,
@@ -507,7 +507,7 @@ function JobAdDetailPage() {
                 <TableRow
                   key={c.id}
                   className="cursor-pointer"
-                  onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
+                  onClick={() => navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })}
                 >
                   <TableCell>
                     <div className="flex flex-col">
@@ -538,7 +538,7 @@ function JobAdDetailPage() {
                           onValueChange={(v) => changeStage(c.id, v)}
                         >
                           <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
-                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", stageBadgeClass(cur?.legacy_status))}>
                               {cur?.label ?? "—"}
                             </span>
                           </SelectTrigger>
@@ -598,7 +598,7 @@ function JobAdDetailPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
+                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })}
                         >
                           Open candidate
                         </DropdownMenuItem>

@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { queryOptions, useSuspenseQuery, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   getCandidate,
   updateCandidate,
   deleteCandidate,
   getPortalShell,
+  listCandidates,
 } from "@/lib/candidates.functions";
 import { openResumeInNewTab } from "@/lib/open-resume";
 import { Button } from "@/components/ui/button";
@@ -25,11 +28,12 @@ import {
   FitBadge,
   STATUS_LABELS,
   FIT_LABELS,
+  stageBadgeClass,
 } from "@/components/portal/Badges";
 import { screeningQuestions } from "@/config/screening";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Download, ExternalLink, Star, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, Star, Trash2 } from "lucide-react";
 
 const candidateQuery = (id: string) =>
   queryOptions({
@@ -37,7 +41,18 @@ const candidateQuery = (id: string) =>
     queryFn: () => getCandidate({ data: { id } }),
   });
 
+const siblingsQuery = (jobAdId: string) =>
+  queryOptions({
+    queryKey: ["candidates", "by-ad", jobAdId],
+    queryFn: () => listCandidates({ data: { job_ad_id: jobAdId } }),
+  });
+
+const detailSearchSchema = z.object({
+  from: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/_authenticated/staff/$id")({
+  validateSearch: zodValidator(detailSearchSchema),
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(candidateQuery(params.id)),
   component: CandidateDetailPage,
@@ -46,6 +61,7 @@ export const Route = createFileRoute("/_authenticated/staff/$id")({
 
 function CandidateDetailPage() {
   const { id } = Route.useParams();
+  const { from } = Route.useSearch();
   const { data } = useSuspenseQuery(candidateQuery(id));
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -59,6 +75,48 @@ function CandidateDetailPage() {
     queryFn: () => getPortalShell(),
   });
   const isAdmin = (shell?.roles ?? []).includes("admin");
+
+  // Sibling navigation: fetch the originating job ad's candidate list if `from` is set.
+  const { data: siblingsData } = useQuery({
+    ...siblingsQuery(from ?? ""),
+    enabled: !!from,
+  });
+  const { prevId, nextId, position } = useMemo(() => {
+    const list = siblingsData?.candidates ?? [];
+    if (!from || list.length === 0) return { prevId: null as string | null, nextId: null as string | null, position: null as { idx: number; total: number } | null };
+    const idx = list.findIndex((c: any) => c.id === id);
+    if (idx === -1) return { prevId: null, nextId: null, position: null };
+    return {
+      prevId: idx > 0 ? (list[idx - 1] as any).id : null,
+      nextId: idx < list.length - 1 ? (list[idx + 1] as any).id : null,
+      position: { idx: idx + 1, total: list.length },
+    };
+  }, [siblingsData, from, id]);
+
+  function gotoSibling(targetId: string | null) {
+    if (!targetId) return;
+    navigate({ to: "/staff/$id", params: { id: targetId }, search: { from } });
+  }
+
+  // Keyboard shortcuts: ← / → flip through siblings.
+  useEffect(() => {
+    if (!from) return;
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement | null)?.isContentEditable) return;
+      if (e.key === "ArrowLeft" && prevId) {
+        e.preventDefault();
+        gotoSibling(prevId);
+      } else if (e.key === "ArrowRight" && nextId) {
+        e.preventDefault();
+        gotoSibling(nextId);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, prevId, nextId]);
+
 
   async function handleDelete() {
     setDeleting(true);
@@ -124,9 +182,43 @@ function CandidateDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/staff/candidates" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to candidates
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/staff/candidates" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back to candidates
+        </Link>
+        {from && position && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => gotoSibling(prevId)}
+              disabled={!prevId}
+              title="Previous candidate (←)"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-input transition-colors",
+                prevId ? "hover:bg-accent hover:text-accent-foreground" : "cursor-not-allowed opacity-40",
+              )}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="tabular-nums text-xs text-muted-foreground">
+              {position.idx} / {position.total}
+            </span>
+            <button
+              type="button"
+              onClick={() => gotoSibling(nextId)}
+              disabled={!nextId}
+              title="Next candidate (→)"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-input transition-colors",
+                nextId ? "hover:bg-accent hover:text-accent-foreground" : "cursor-not-allowed opacity-40",
+              )}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>

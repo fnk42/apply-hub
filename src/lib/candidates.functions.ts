@@ -177,6 +177,7 @@ const FIT_VALUES = ["unrated", "weak", "medium", "strong"] as const;
 const STATUS_VALUES = [
   "sourced",
   "scheduled_interview",
+  "hired",
   "rejected_screening",
   "candidate_declined",
 ] as const;
@@ -1039,6 +1040,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const funnel = [
       { key: "sourced", label: "Sourced", count: count((r) => r.pipeline_status === "sourced") },
       { key: "scheduled_interview", label: "Scheduled for Interview", count: stats.scheduled_total },
+      { key: "hired", label: "Hired", count: count((r) => r.pipeline_status === "hired") },
       { key: "rejected_screening", label: "Rejected at Screening", count: stats.rejected_total },
       { key: "candidate_declined", label: "Candidate Declined", count: stats.declined_total },
     ];
