@@ -40,6 +40,8 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"signin" | "forgot">("signin");
+  const [resetBusy, setResetBusy] = useState(false);
 
   const resolveDestination = useCallback(async (): Promise<string> => {
     // Honor an explicit, non-surface redirect (e.g. deep link).
