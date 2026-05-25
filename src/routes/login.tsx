@@ -24,9 +24,9 @@ function normalizeRedirect(value: string | null | undefined) {
 }
 
 function destinationForRoles(roles: string[]): string {
-  if (roles.includes("admin")) return "/talentportal/main";
-  if (roles.includes("member")) return "/talentportal/staff";
-  if (roles.includes("client")) return "/talentportal/clients";
+  if (roles.includes("admin")) return "/main";
+  if (roles.includes("member")) return "/staff";
+  if (roles.includes("client")) return "/client";
   return "/unauthorized";
 }
 
@@ -48,8 +48,15 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const resolveDestination = useCallback(async (): Promise<string> => {
-    // Honor an explicit, non-portal redirect (e.g. deep link).
-    if (redirectTo && !redirectTo.startsWith("/portal") && !redirectTo.startsWith("/talentportal")) {
+    // Honor an explicit, non-surface redirect (e.g. deep link).
+    if (
+      redirectTo &&
+      !redirectTo.startsWith("/portal") &&
+      !redirectTo.startsWith("/talentportal") &&
+      !redirectTo.startsWith("/main") &&
+      !redirectTo.startsWith("/staff") &&
+      !redirectTo.startsWith("/client")
+    ) {
       return redirectTo;
     }
     try {

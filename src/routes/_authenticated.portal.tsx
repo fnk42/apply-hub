@@ -7,7 +7,7 @@ import { AppSidebar } from "@/components/portal/AppSidebar";
 import { NotificationBell } from "@/components/portal/NotificationBell";
 
 export const Route = createFileRoute("/_authenticated/portal")({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     // Wait for the Supabase session to hydrate so the bearer token is
     // attached when getPortalShell runs. Without this the first call races
     // session restore and 401s, which then renders as /unauthorized.
@@ -19,6 +19,14 @@ export const Route = createFileRoute("/_authenticated/portal")({
       roles.includes("member") ||
       roles.includes("client");
     if (!ok) throw redirect({ to: "/unauthorized" });
+
+    // Role-based redirect at the /portal root only — keep deep links
+    // like /portal/jobs/$slug working for old bookmarks.
+    if (location.pathname === "/portal" || location.pathname === "/portal/") {
+      if (roles.includes("admin")) throw redirect({ to: "/main" });
+      if (roles.includes("member")) throw redirect({ to: "/staff" });
+      if (roles.includes("client")) throw redirect({ to: "/client" });
+    }
   },
   component: PortalLayout,
 });

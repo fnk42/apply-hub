@@ -15,9 +15,15 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApplySlugRouteImport } from './routes/apply.$slug'
 import { Route as AuthenticatedTalentportalRouteImport } from './routes/_authenticated.talentportal'
+import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated.staff'
 import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated.portal'
+import { Route as AuthenticatedMainRouteImport } from './routes/_authenticated.main'
+import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated.client'
 import { Route as AuthenticatedTalentportalIndexRouteImport } from './routes/_authenticated.talentportal.index'
+import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated.staff.index'
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
+import { Route as AuthenticatedMainIndexRouteImport } from './routes/_authenticated.main.index'
+import { Route as AuthenticatedClientIndexRouteImport } from './routes/_authenticated.client.index'
 import { Route as AuthenticatedTalentportalStaffRouteImport } from './routes/_authenticated.talentportal.staff'
 import { Route as AuthenticatedTalentportalMainRouteImport } from './routes/_authenticated.talentportal.main'
 import { Route as AuthenticatedTalentportalClientsRouteImport } from './routes/_authenticated.talentportal.clients'
@@ -68,9 +74,24 @@ const AuthenticatedTalentportalRoute =
     path: '/talentportal',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedPortalRoute = AuthenticatedPortalRouteImport.update({
   id: '/portal',
   path: '/portal',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMainRoute = AuthenticatedMainRouteImport.update({
+  id: '/main',
+  path: '/main',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedClientRoute = AuthenticatedClientRouteImport.update({
+  id: '/client',
+  path: '/client',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedTalentportalIndexRoute =
@@ -79,11 +100,27 @@ const AuthenticatedTalentportalIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedTalentportalRoute,
   } as any)
+const AuthenticatedStaffIndexRoute = AuthenticatedStaffIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedStaffRoute,
+} as any)
 const AuthenticatedPortalIndexRoute =
   AuthenticatedPortalIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
+const AuthenticatedMainIndexRoute = AuthenticatedMainIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedMainRoute,
+} as any)
+const AuthenticatedClientIndexRoute =
+  AuthenticatedClientIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedClientRoute,
   } as any)
 const AuthenticatedTalentportalStaffRoute =
   AuthenticatedTalentportalStaffRouteImport.update({
@@ -201,7 +238,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/client': typeof AuthenticatedClientRouteWithChildren
+  '/main': typeof AuthenticatedMainRouteWithChildren
   '/portal': typeof AuthenticatedPortalRouteWithChildren
+  '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/talentportal': typeof AuthenticatedTalentportalRouteWithChildren
   '/apply/$slug': typeof ApplySlugRoute
   '/portal/$': typeof AuthenticatedPortalSplatRoute
@@ -215,7 +255,10 @@ export interface FileRoutesByFullPath {
   '/talentportal/clients': typeof AuthenticatedTalentportalClientsRoute
   '/talentportal/main': typeof AuthenticatedTalentportalMainRoute
   '/talentportal/staff': typeof AuthenticatedTalentportalStaffRoute
+  '/client/': typeof AuthenticatedClientIndexRoute
+  '/main/': typeof AuthenticatedMainIndexRoute
   '/portal/': typeof AuthenticatedPortalIndexRoute
+  '/staff/': typeof AuthenticatedStaffIndexRoute
   '/talentportal/': typeof AuthenticatedTalentportalIndexRoute
   '/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
@@ -242,7 +285,10 @@ export interface FileRoutesByTo {
   '/talentportal/clients': typeof AuthenticatedTalentportalClientsRoute
   '/talentportal/main': typeof AuthenticatedTalentportalMainRoute
   '/talentportal/staff': typeof AuthenticatedTalentportalStaffRoute
+  '/client': typeof AuthenticatedClientIndexRoute
+  '/main': typeof AuthenticatedMainIndexRoute
   '/portal': typeof AuthenticatedPortalIndexRoute
+  '/staff': typeof AuthenticatedStaffIndexRoute
   '/talentportal': typeof AuthenticatedTalentportalIndexRoute
   '/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
@@ -259,7 +305,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/_authenticated/client': typeof AuthenticatedClientRouteWithChildren
+  '/_authenticated/main': typeof AuthenticatedMainRouteWithChildren
   '/_authenticated/portal': typeof AuthenticatedPortalRouteWithChildren
+  '/_authenticated/staff': typeof AuthenticatedStaffRouteWithChildren
   '/_authenticated/talentportal': typeof AuthenticatedTalentportalRouteWithChildren
   '/apply/$slug': typeof ApplySlugRoute
   '/_authenticated/portal/$': typeof AuthenticatedPortalSplatRoute
@@ -273,7 +322,10 @@ export interface FileRoutesById {
   '/_authenticated/talentportal/clients': typeof AuthenticatedTalentportalClientsRoute
   '/_authenticated/talentportal/main': typeof AuthenticatedTalentportalMainRoute
   '/_authenticated/talentportal/staff': typeof AuthenticatedTalentportalStaffRoute
+  '/_authenticated/client/': typeof AuthenticatedClientIndexRoute
+  '/_authenticated/main/': typeof AuthenticatedMainIndexRoute
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
+  '/_authenticated/staff/': typeof AuthenticatedStaffIndexRoute
   '/_authenticated/talentportal/': typeof AuthenticatedTalentportalIndexRoute
   '/_authenticated/portal/clients/$id': typeof AuthenticatedPortalClientsIdRoute
   '/_authenticated/portal/jobs/$slug': typeof AuthenticatedPortalJobsSlugRouteWithChildren
@@ -290,7 +342,10 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/unauthorized'
+    | '/client'
+    | '/main'
     | '/portal'
+    | '/staff'
     | '/talentportal'
     | '/apply/$slug'
     | '/portal/$'
@@ -304,7 +359,10 @@ export interface FileRouteTypes {
     | '/talentportal/clients'
     | '/talentportal/main'
     | '/talentportal/staff'
+    | '/client/'
+    | '/main/'
     | '/portal/'
+    | '/staff/'
     | '/talentportal/'
     | '/portal/clients/$id'
     | '/portal/jobs/$slug'
@@ -331,7 +389,10 @@ export interface FileRouteTypes {
     | '/talentportal/clients'
     | '/talentportal/main'
     | '/talentportal/staff'
+    | '/client'
+    | '/main'
     | '/portal'
+    | '/staff'
     | '/talentportal'
     | '/portal/clients/$id'
     | '/portal/jobs/$slug'
@@ -347,7 +408,10 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/unauthorized'
+    | '/_authenticated/client'
+    | '/_authenticated/main'
     | '/_authenticated/portal'
+    | '/_authenticated/staff'
     | '/_authenticated/talentportal'
     | '/apply/$slug'
     | '/_authenticated/portal/$'
@@ -361,7 +425,10 @@ export interface FileRouteTypes {
     | '/_authenticated/talentportal/clients'
     | '/_authenticated/talentportal/main'
     | '/_authenticated/talentportal/staff'
+    | '/_authenticated/client/'
+    | '/_authenticated/main/'
     | '/_authenticated/portal/'
+    | '/_authenticated/staff/'
     | '/_authenticated/talentportal/'
     | '/_authenticated/portal/clients/$id'
     | '/_authenticated/portal/jobs/$slug'
@@ -427,11 +494,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTalentportalRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/staff': {
+      id: '/_authenticated/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof AuthenticatedStaffRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/portal': {
       id: '/_authenticated/portal'
       path: '/portal'
       fullPath: '/portal'
       preLoaderRoute: typeof AuthenticatedPortalRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/main': {
+      id: '/_authenticated/main'
+      path: '/main'
+      fullPath: '/main'
+      preLoaderRoute: typeof AuthenticatedMainRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/client': {
+      id: '/_authenticated/client'
+      path: '/client'
+      fullPath: '/client'
+      preLoaderRoute: typeof AuthenticatedClientRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/talentportal/': {
@@ -441,12 +529,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTalentportalIndexRouteImport
       parentRoute: typeof AuthenticatedTalentportalRoute
     }
+    '/_authenticated/staff/': {
+      id: '/_authenticated/staff/'
+      path: '/'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof AuthenticatedStaffIndexRouteImport
+      parentRoute: typeof AuthenticatedStaffRoute
+    }
     '/_authenticated/portal/': {
       id: '/_authenticated/portal/'
       path: '/'
       fullPath: '/portal/'
       preLoaderRoute: typeof AuthenticatedPortalIndexRouteImport
       parentRoute: typeof AuthenticatedPortalRoute
+    }
+    '/_authenticated/main/': {
+      id: '/_authenticated/main/'
+      path: '/'
+      fullPath: '/main/'
+      preLoaderRoute: typeof AuthenticatedMainIndexRouteImport
+      parentRoute: typeof AuthenticatedMainRoute
+    }
+    '/_authenticated/client/': {
+      id: '/_authenticated/client/'
+      path: '/'
+      fullPath: '/client/'
+      preLoaderRoute: typeof AuthenticatedClientIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/talentportal/staff': {
       id: '/_authenticated/talentportal/staff'
@@ -584,6 +693,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedClientRouteChildren {
+  AuthenticatedClientIndexRoute: typeof AuthenticatedClientIndexRoute
+}
+
+const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
+  AuthenticatedClientIndexRoute: AuthenticatedClientIndexRoute,
+}
+
+const AuthenticatedClientRouteWithChildren =
+  AuthenticatedClientRoute._addFileChildren(AuthenticatedClientRouteChildren)
+
+interface AuthenticatedMainRouteChildren {
+  AuthenticatedMainIndexRoute: typeof AuthenticatedMainIndexRoute
+}
+
+const AuthenticatedMainRouteChildren: AuthenticatedMainRouteChildren = {
+  AuthenticatedMainIndexRoute: AuthenticatedMainIndexRoute,
+}
+
+const AuthenticatedMainRouteWithChildren =
+  AuthenticatedMainRoute._addFileChildren(AuthenticatedMainRouteChildren)
+
 interface AuthenticatedPortalClientsRouteChildren {
   AuthenticatedPortalClientsIdRoute: typeof AuthenticatedPortalClientsIdRoute
 }
@@ -650,6 +781,17 @@ const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
 const AuthenticatedPortalRouteWithChildren =
   AuthenticatedPortalRoute._addFileChildren(AuthenticatedPortalRouteChildren)
 
+interface AuthenticatedStaffRouteChildren {
+  AuthenticatedStaffIndexRoute: typeof AuthenticatedStaffIndexRoute
+}
+
+const AuthenticatedStaffRouteChildren: AuthenticatedStaffRouteChildren = {
+  AuthenticatedStaffIndexRoute: AuthenticatedStaffIndexRoute,
+}
+
+const AuthenticatedStaffRouteWithChildren =
+  AuthenticatedStaffRoute._addFileChildren(AuthenticatedStaffRouteChildren)
+
 interface AuthenticatedTalentportalRouteChildren {
   AuthenticatedTalentportalClientsRoute: typeof AuthenticatedTalentportalClientsRoute
   AuthenticatedTalentportalMainRoute: typeof AuthenticatedTalentportalMainRoute
@@ -672,12 +814,18 @@ const AuthenticatedTalentportalRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedClientRoute: typeof AuthenticatedClientRouteWithChildren
+  AuthenticatedMainRoute: typeof AuthenticatedMainRouteWithChildren
   AuthenticatedPortalRoute: typeof AuthenticatedPortalRouteWithChildren
+  AuthenticatedStaffRoute: typeof AuthenticatedStaffRouteWithChildren
   AuthenticatedTalentportalRoute: typeof AuthenticatedTalentportalRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedClientRoute: AuthenticatedClientRouteWithChildren,
+  AuthenticatedMainRoute: AuthenticatedMainRouteWithChildren,
   AuthenticatedPortalRoute: AuthenticatedPortalRouteWithChildren,
+  AuthenticatedStaffRoute: AuthenticatedStaffRouteWithChildren,
   AuthenticatedTalentportalRoute: AuthenticatedTalentportalRouteWithChildren,
 }
 
