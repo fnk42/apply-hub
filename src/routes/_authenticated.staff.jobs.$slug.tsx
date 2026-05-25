@@ -68,6 +68,7 @@ import {
   FileText,
   Linkedin,
   Lock,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
