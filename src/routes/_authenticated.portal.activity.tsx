@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { listActivity } from "@/lib/candidates.functions";
+import { listActivity, getMyRoles } from "@/lib/candidates.functions";
 import {
   Select,
   SelectContent,
@@ -18,6 +18,15 @@ const activityQuery = queryOptions({
 });
 
 export const Route = createFileRoute("/_authenticated/portal/activity")({
+  beforeLoad: async () => {
+    const { roles } = await getMyRoles();
+    if (!roles.includes("admin")) {
+      throw redirect({
+        to: "/portal/jobs/$slug",
+        params: { slug: "business-development-manager" },
+      });
+    }
+  },
   loader: ({ context }) => context.queryClient.ensureQueryData(activityQuery),
   component: ActivityPage,
 });
