@@ -24,7 +24,7 @@ function normalizeRedirect(value: string | null | undefined) {
 function destinationForRoles(roles: string[]): string {
   if (roles.includes("admin")) return "/talentportal/main";
   if (roles.includes("member")) return "/talentportal/staff";
-  if (roles.includes("client")) return "/talentportal/client";
+  if (roles.includes("client")) return "/talentportal/clients";
   return "/unauthorized";
 }
 

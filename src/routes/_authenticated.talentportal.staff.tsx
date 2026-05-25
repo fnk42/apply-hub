@@ -5,7 +5,7 @@ export const Route = createFileRoute("/_authenticated/talentportal/staff")({
   beforeLoad: async ({ context }) => {
     const { roles } = await context.queryClient.ensureQueryData(shellQuery);
     if (!roles.includes("member") && !roles.includes("admin")) {
-      if (roles.includes("client")) throw redirect({ to: "/talentportal/client" });
+      if (roles.includes("client")) throw redirect({ to: "/talentportal/clients" });
       throw redirect({ to: "/unauthorized" });
     }
     // For now, send staff straight to the jobs list.

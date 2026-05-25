@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_authenticated/talentportal/main")({
     const { roles } = await context.queryClient.ensureQueryData(shellQuery);
     if (!roles.includes("admin")) {
       if (roles.includes("member")) throw redirect({ to: "/talentportal/staff" });
-      if (roles.includes("client")) throw redirect({ to: "/talentportal/client" });
+      if (roles.includes("client")) throw redirect({ to: "/talentportal/clients" });
       throw redirect({ to: "/unauthorized" });
     }
   },

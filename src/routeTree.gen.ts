@@ -20,7 +20,7 @@ import { Route as AuthenticatedTalentportalIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
 import { Route as AuthenticatedTalentportalStaffRouteImport } from './routes/_authenticated.talentportal.staff'
 import { Route as AuthenticatedTalentportalMainRouteImport } from './routes/_authenticated.talentportal.main'
-import { Route as AuthenticatedTalentportalClientRouteImport } from './routes/_authenticated.talentportal/client'
+import { Route as AuthenticatedTalentportalClientsRouteImport } from './routes/_authenticated.talentportal.clients'
 import { Route as AuthenticatedPortalShortlistRouteImport } from './routes/_authenticated.portal.shortlist'
 import { Route as AuthenticatedPortalSettingsRouteImport } from './routes/_authenticated.portal.settings'
 import { Route as AuthenticatedPortalClientsRouteImport } from './routes/_authenticated.portal.clients'
@@ -97,10 +97,10 @@ const AuthenticatedTalentportalMainRoute =
     path: '/main',
     getParentRoute: () => AuthenticatedTalentportalRoute,
   } as any)
-const AuthenticatedTalentportalClientRoute =
-  AuthenticatedTalentportalClientRouteImport.update({
-    id: '/client',
-    path: '/client',
+const AuthenticatedTalentportalClientsRoute =
+  AuthenticatedTalentportalClientsRouteImport.update({
+    id: '/clients',
+    path: '/clients',
     getParentRoute: () => AuthenticatedTalentportalRoute,
   } as any)
 const AuthenticatedPortalShortlistRoute =
@@ -212,7 +212,7 @@ export interface FileRoutesByFullPath {
   '/portal/clients': typeof AuthenticatedPortalClientsRouteWithChildren
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
-  '/talentportal/client': typeof AuthenticatedTalentportalClientRoute
+  '/talentportal/clients': typeof AuthenticatedTalentportalClientsRoute
   '/talentportal/main': typeof AuthenticatedTalentportalMainRoute
   '/talentportal/staff': typeof AuthenticatedTalentportalStaffRoute
   '/portal/': typeof AuthenticatedPortalIndexRoute
@@ -239,7 +239,7 @@ export interface FileRoutesByTo {
   '/portal/clients': typeof AuthenticatedPortalClientsRouteWithChildren
   '/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
-  '/talentportal/client': typeof AuthenticatedTalentportalClientRoute
+  '/talentportal/clients': typeof AuthenticatedTalentportalClientsRoute
   '/talentportal/main': typeof AuthenticatedTalentportalMainRoute
   '/talentportal/staff': typeof AuthenticatedTalentportalStaffRoute
   '/portal': typeof AuthenticatedPortalIndexRoute
@@ -270,7 +270,7 @@ export interface FileRoutesById {
   '/_authenticated/portal/clients': typeof AuthenticatedPortalClientsRouteWithChildren
   '/_authenticated/portal/settings': typeof AuthenticatedPortalSettingsRoute
   '/_authenticated/portal/shortlist': typeof AuthenticatedPortalShortlistRoute
-  '/_authenticated/talentportal/client': typeof AuthenticatedTalentportalClientRoute
+  '/_authenticated/talentportal/clients': typeof AuthenticatedTalentportalClientsRoute
   '/_authenticated/talentportal/main': typeof AuthenticatedTalentportalMainRoute
   '/_authenticated/talentportal/staff': typeof AuthenticatedTalentportalStaffRoute
   '/_authenticated/portal/': typeof AuthenticatedPortalIndexRoute
@@ -301,7 +301,7 @@ export interface FileRouteTypes {
     | '/portal/clients'
     | '/portal/settings'
     | '/portal/shortlist'
-    | '/talentportal/client'
+    | '/talentportal/clients'
     | '/talentportal/main'
     | '/talentportal/staff'
     | '/portal/'
@@ -328,7 +328,7 @@ export interface FileRouteTypes {
     | '/portal/clients'
     | '/portal/settings'
     | '/portal/shortlist'
-    | '/talentportal/client'
+    | '/talentportal/clients'
     | '/talentportal/main'
     | '/talentportal/staff'
     | '/portal'
@@ -358,7 +358,7 @@ export interface FileRouteTypes {
     | '/_authenticated/portal/clients'
     | '/_authenticated/portal/settings'
     | '/_authenticated/portal/shortlist'
-    | '/_authenticated/talentportal/client'
+    | '/_authenticated/talentportal/clients'
     | '/_authenticated/talentportal/main'
     | '/_authenticated/talentportal/staff'
     | '/_authenticated/portal/'
@@ -462,11 +462,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTalentportalMainRouteImport
       parentRoute: typeof AuthenticatedTalentportalRoute
     }
-    '/_authenticated/talentportal/client': {
-      id: '/_authenticated/talentportal/client'
-      path: '/client'
-      fullPath: '/talentportal/client'
-      preLoaderRoute: typeof AuthenticatedTalentportalClientRouteImport
+    '/_authenticated/talentportal/clients': {
+      id: '/_authenticated/talentportal/clients'
+      path: '/clients'
+      fullPath: '/talentportal/clients'
+      preLoaderRoute: typeof AuthenticatedTalentportalClientsRouteImport
       parentRoute: typeof AuthenticatedTalentportalRoute
     }
     '/_authenticated/portal/shortlist': {
@@ -651,7 +651,7 @@ const AuthenticatedPortalRouteWithChildren =
   AuthenticatedPortalRoute._addFileChildren(AuthenticatedPortalRouteChildren)
 
 interface AuthenticatedTalentportalRouteChildren {
-  AuthenticatedTalentportalClientRoute: typeof AuthenticatedTalentportalClientRoute
+  AuthenticatedTalentportalClientsRoute: typeof AuthenticatedTalentportalClientsRoute
   AuthenticatedTalentportalMainRoute: typeof AuthenticatedTalentportalMainRoute
   AuthenticatedTalentportalStaffRoute: typeof AuthenticatedTalentportalStaffRoute
   AuthenticatedTalentportalIndexRoute: typeof AuthenticatedTalentportalIndexRoute
@@ -659,7 +659,8 @@ interface AuthenticatedTalentportalRouteChildren {
 
 const AuthenticatedTalentportalRouteChildren: AuthenticatedTalentportalRouteChildren =
   {
-    AuthenticatedTalentportalClientRoute: AuthenticatedTalentportalClientRoute,
+    AuthenticatedTalentportalClientsRoute:
+      AuthenticatedTalentportalClientsRoute,
     AuthenticatedTalentportalMainRoute: AuthenticatedTalentportalMainRoute,
     AuthenticatedTalentportalStaffRoute: AuthenticatedTalentportalStaffRoute,
     AuthenticatedTalentportalIndexRoute: AuthenticatedTalentportalIndexRoute,
@@ -696,13 +697,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
