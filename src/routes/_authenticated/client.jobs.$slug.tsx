@@ -361,6 +361,22 @@ function ClientJobAdView() {
             </TableBody>
           </Table>
         )}
+        {totalRows > PAGE_SIZE && (
+          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+            <span className="text-muted-foreground">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalRows)} of {totalRows}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Prev
+              </Button>
+              <span className="text-muted-foreground">Page {safePage} of {pageCount}</span>
+              <Button variant="outline" size="sm" disabled={safePage >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
