@@ -538,7 +538,7 @@ function JobAdDetailPage() {
                           onValueChange={(v) => changeStage(c.id, v)}
                         >
                           <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
-                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", stageBadgeClass(cur?.legacy_status))}>
                               {cur?.label ?? "—"}
                             </span>
                           </SelectTrigger>
