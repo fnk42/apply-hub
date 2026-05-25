@@ -146,6 +146,7 @@ function JobAdDetailPage() {
   const { data: stagesData } = useSuspenseQuery(stagesQuery(ad.id));
   const { data: rolesData } = useSuspenseQuery(rolesQuery);
   const isAdmin = rolesData.roles.includes("admin");
+  const isInternal = isAdmin || rolesData.roles.includes("member");
   const stages = stagesData.stages;
   const stageById = new Map(stages.map((s) => [s.id, s]));
   const navigate = useNavigate();
