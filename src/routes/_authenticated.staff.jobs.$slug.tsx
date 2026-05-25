@@ -178,17 +178,14 @@ function JobAdDetailPage() {
     return true;
   });
 
-  const FIT_CYCLE = ["unrated", "strong", "medium", "weak"] as const;
-  async function cycleFit(id: string, current: string) {
-    const idx = FIT_CYCLE.indexOf(current as any);
-    const next = FIT_CYCLE[(idx + 1) % FIT_CYCLE.length];
-    try {
-      await updateCandidate({ data: { id, patch: { fit: next } } });
-      qc.invalidateQueries({ queryKey: ["candidates"] });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed");
-    }
-  }
+  const daysLive = ad.authorized_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(ad.authorized_at).getTime()) / 86400000,
+        ),
+      )
+    : null;
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
@@ -201,17 +198,9 @@ function JobAdDetailPage() {
 
   type FitVal = "unrated" | "weak" | "medium" | "strong";
   const candKey = ["candidates", "by-ad", ad.id] as const;
-  const clickRef = useRef<Map<string, { count: number; timer: ReturnType<typeof setTimeout> }>>(new Map());
+  const clickRef = useRef<Map<string, { count: number; timer: ReturnType<typeof setTimeout>; prev: FitVal }>>(new Map());
 
   function applyOptimistic(id: string, next: FitVal) {
-    qc.setQueryData(candKey, (old: any) => {
-      if (!old?.candidates) return old;
-      return {
-        ...old,
-        candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: c.fit, _prevFit: c.fit, fit_optimistic: next } : c)),
-      };
-    });
-    // simpler: just overwrite fit, remember previous for rollback
     qc.setQueryData(candKey, (old: any) => {
       if (!old?.candidates) return old;
       return {
@@ -220,6 +209,7 @@ function JobAdDetailPage() {
       };
     });
   }
+
 
   async function commitFit(id: string, next: FitVal, prev: FitVal) {
     try {
