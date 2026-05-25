@@ -8,8 +8,7 @@ import {
 } from "@/lib/candidates.functions";
 import {
   listPayments,
-  markPaymentPaid,
-  voidPayment,
+  setPaymentStatus,
   getAppSettings,
   updateAppSettings,
   listAllJobAds,
