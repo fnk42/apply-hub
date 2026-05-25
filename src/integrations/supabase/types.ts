@@ -616,7 +616,7 @@ export type Database = {
       slugify: { Args: { _input: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "recruiter" | "member" | "client"
+      app_role: "admin" | "member" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -744,7 +744,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "recruiter", "member", "client"],
+      app_role: ["admin", "member", "client"],
     },
   },
 } as const
