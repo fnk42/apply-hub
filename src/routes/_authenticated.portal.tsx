@@ -24,11 +24,9 @@ export const Route = createFileRoute("/_authenticated/portal")({
 });
 
 function PortalLayout() {
-  const { data } = useQuery({
-    queryKey: ["portal-shell"],
-    queryFn: () => getPortalShell(),
-  });
-  const appName = data?.appName ?? "Project Dashboard";
+  const { data } = useSuspenseQuery(shellQuery);
+  const appName = data.appName;
+
 
   return (
     <SidebarProvider>
