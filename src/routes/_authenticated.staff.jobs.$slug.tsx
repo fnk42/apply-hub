@@ -492,10 +492,11 @@ function JobAdDetailPage() {
                 <TableHead>Fit</TableHead>
                 <TableHead className="w-[90px]">Resume</TableHead>
                 <TableHead className="w-[100px] text-center">Shortlist</TableHead>
+                <TableHead className="w-[40px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((c) => (
+              {pageRows.map((c) => (
                 <TableRow
                   key={c.id}
                   className="cursor-pointer"
