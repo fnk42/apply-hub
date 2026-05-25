@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { company } from "@/config/company";
-import { getMyRoles } from "@/lib/candidates.functions";
+import { getPortalShell } from "@/lib/candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,15 @@ function isAllowedDomain(email: string | null | undefined) {
 }
 
 function normalizeRedirect(value: string | null | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/portal";
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "";
   return value;
+}
+
+function destinationForRoles(roles: string[]): string {
+  if (roles.includes("admin")) return "/talentportal/main";
+  if (roles.includes("member")) return "/talentportal/staff";
+  if (roles.includes("client")) return "/talentportal/client";
+  return "/unauthorized";
 }
 
 export const Route = createFileRoute("/login")({
@@ -33,29 +40,23 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { redirect: redirectTo } = Route.useSearch();
-  const destination = redirectTo;
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const resolveDestination = useCallback(async (): Promise<string> => {
-    // If a specific redirect was requested (and isn't the default /portal), honor it
-    if (destination && destination !== "/portal") return destination;
-    try {
-      const { roles } = await getMyRoles();
-      if (
-        roles.includes("admin") ||
-        roles.includes("member") ||
-        roles.includes("client")
-      ) {
-        return "/portal/jobs/business-development-manager";
-      }
-      return "/unauthorized";
-    } catch {
-      return "/portal/jobs/business-development-manager";
+    // Honor an explicit, non-portal redirect (e.g. deep link).
+    if (redirectTo && !redirectTo.startsWith("/portal") && !redirectTo.startsWith("/talentportal")) {
+      return redirectTo;
     }
-  }, [destination]);
+    try {
+      const { roles } = await getPortalShell();
+      return destinationForRoles(roles);
+    } catch {
+      return "/unauthorized";
+    }
+  }, [redirectTo]);
 
   const goToDestination = useCallback(async () => {
     const to = await resolveDestination();
@@ -64,26 +65,18 @@ function LoginPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function forwardWhenAuthenticated() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session || cancelled) return;
-      const { data } = await supabase.auth.getUser();
-      if (cancelled || !data.user) return;
-      if (!isAllowedDomain(data.user.email)) {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session) return;
+      if (!isAllowedDomain(session.user.email)) {
         await supabase.auth.signOut();
         toast.error("Access is invite-only. Your email domain is not approved.");
         return;
       }
       const to = await resolveDestination();
-      if (cancelled) return;
-      void navigate({ to: to as any, replace: true });
-    }
-    forwardWhenAuthenticated();
-    return () => {
-      cancelled = true;
-    };
+      if (!cancelled) void navigate({ to: to as any, replace: true });
+    })();
+    return () => { cancelled = true; };
   }, [navigate, resolveDestination]);
 
   async function handleEmail(e: React.FormEvent) {
@@ -100,13 +93,16 @@ function LoginPage() {
     }
   }
 
+  const cameFromApply = redirectTo.startsWith("/apply");
 
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
-        <Link to="/" className="mb-6 text-sm text-muted-foreground hover:text-foreground">
-          ← Back to apply page
-        </Link>
+        {cameFromApply && (
+          <Link to="/" className="mb-6 text-sm text-muted-foreground hover:text-foreground">
+            ← Back to apply page
+          </Link>
+        )}
         <div className="rounded-lg border border-border bg-card p-8 shadow-sm">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
           <p className="mt-1 text-sm text-muted-foreground">{company.name} portal</p>
@@ -114,37 +110,19 @@ function LoginPage() {
           <form onSubmit={handleEmail} className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
               Sign in
             </Button>
           </form>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Access is invite-only. Approved domains: goldenpipitrecruiting.com,
-            mpshahhospital.org.
+            Access is invite-only. Approved domains: goldenpipitrecruiting.com, mpshahhospital.org.
           </p>
         </div>
       </div>
