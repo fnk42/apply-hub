@@ -508,6 +508,60 @@ export const createClient = createServerFn({ method: "POST" })
     return { id: row.id };
   });
 
+// ---- updateClient (admin) ----
+export const updateClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        client_id: z.string().uuid(),
+        patch: z.object({
+          name: z.string().trim().min(1).max(255).optional(),
+          contact_name: z.string().trim().max(255).nullable().optional(),
+          contact_email: z
+            .string()
+            .trim()
+            .email()
+            .max(255)
+            .nullable()
+            .optional()
+            .or(z.literal("")),
+          notes: z.string().trim().max(20000).nullable().optional(),
+          contract_ad_allowance: z.number().int().min(0).max(1000).optional(),
+        }),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Only admins can edit clients.");
+
+    const patch: Record<string, any> = {};
+    const p = data.patch;
+    if (p.name !== undefined) patch.name = p.name;
+    if (p.contact_name !== undefined) patch.contact_name = p.contact_name || null;
+    if (p.contact_email !== undefined) patch.contact_email = p.contact_email ? p.contact_email : null;
+    if (p.notes !== undefined) patch.notes = p.notes || null;
+    if (p.contract_ad_allowance !== undefined) patch.contract_ad_allowance = p.contract_ad_allowance;
+
+    if (Object.keys(patch).length === 0) return { ok: true };
+
+    const { error } = await supabaseAdmin
+      .from("clients")
+      .update(patch as never)
+      .eq("id", data.client_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+
 // ---- deleteClient (admin) ----
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
