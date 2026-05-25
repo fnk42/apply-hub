@@ -57,12 +57,8 @@ export function AppSidebar() {
   const roles = data?.roles ?? [];
   const isAdmin = roles.includes("admin");
   const isInternal = isAdmin || roles.includes("member");
-  // Non-admins (clients + members) only ever see the BDM tab.
-  const ads = isAdmin
-    ? allAds
-    : allAds.filter((a) => a.slug === "business-development-manager").length > 0
-      ? allAds.filter((a) => a.slug === "business-development-manager")
-      : allAds.filter((a) => a.status === "live").slice(0, 1);
+  const ads = allAds;
+
 
   return (
     <Sidebar collapsible="icon">
@@ -81,11 +77,10 @@ export function AppSidebar() {
         {GROUPS.map((g) => {
           const items = ads.filter((a) => g.statuses.includes(a.status));
           if (items.length === 0) return null;
-          // Non-admins only see the (single) live tab; collapse labels for them.
-          if (!isAdmin && g.key !== "live") return null;
           return (
             <SidebarGroup key={g.key}>
-              {isAdmin && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
+              <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.map((a) => (

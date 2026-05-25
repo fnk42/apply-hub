@@ -1,13 +1,19 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getMyRoles, getPortalShell } from "@/lib/candidates.functions";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { getPortalShell } from "@/lib/candidates.functions";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/portal/AppSidebar";
 import { NotificationBell } from "@/components/portal/NotificationBell";
 
+const shellQuery = queryOptions({
+  queryKey: ["portal-shell"],
+  queryFn: () => getPortalShell(),
+  staleTime: 30_000,
+});
+
 export const Route = createFileRoute("/_authenticated/portal")({
-  beforeLoad: async () => {
-    const { roles } = await getMyRoles();
+  beforeLoad: async ({ context }) => {
+    const { roles } = await context.queryClient.ensureQueryData(shellQuery);
     const ok =
       roles.includes("admin") ||
       roles.includes("member") ||
@@ -18,11 +24,9 @@ export const Route = createFileRoute("/_authenticated/portal")({
 });
 
 function PortalLayout() {
-  const { data } = useQuery({
-    queryKey: ["portal-shell"],
-    queryFn: () => getPortalShell(),
-  });
-  const appName = data?.appName ?? "Project Dashboard";
+  const { data } = useSuspenseQuery(shellQuery);
+  const appName = data.appName;
+
 
   return (
     <SidebarProvider>
