@@ -153,7 +153,7 @@ function ActivityPage() {
                         {EVENT_LABELS[ev.event_type] ?? ev.event_type}
                       </span>{" "}
                       <Link
-                        to="/portal/$id"
+                        to="/staff/$id"
                         params={{ id: ev.application_id }}
                         className="font-medium text-primary hover:underline"
                       >

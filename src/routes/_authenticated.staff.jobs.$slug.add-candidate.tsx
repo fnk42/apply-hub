@@ -92,7 +92,7 @@ function AddCandidatePage() {
     qc.invalidateQueries({ queryKey: ["job-ad", slug] });
     toast.success("Candidate added");
     try {
-      await navigate({ to: "/portal/$id", params: { id: newId! } });
+      await navigate({ to: "/staff/$id", params: { id: newId! } });
     } catch (err) {
       console.error("navigate to candidate failed, falling back", err);
       navigate({ to: "/staff/jobs/$slug", params: { slug } });

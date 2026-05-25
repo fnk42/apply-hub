@@ -441,7 +441,7 @@ function JobAdDetailPage() {
                 <TableRow
                   key={c.id}
                   className="cursor-pointer"
-                  onClick={() => navigate({ to: "/portal/$id", params: { id: c.id } })}
+                  onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
                 >
                   <TableCell>
                     <div className="flex flex-col">
