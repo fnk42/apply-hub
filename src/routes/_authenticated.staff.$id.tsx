@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { queryOptions, useSuspenseQuery, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   getCandidate,
   updateCandidate,
   deleteCandidate,
   getPortalShell,
+  listCandidates,
 } from "@/lib/candidates.functions";
 import { openResumeInNewTab } from "@/lib/open-resume";
 import { Button } from "@/components/ui/button";
@@ -25,11 +28,12 @@ import {
   FitBadge,
   STATUS_LABELS,
   FIT_LABELS,
+  stageBadgeClass,
 } from "@/components/portal/Badges";
 import { screeningQuestions } from "@/config/screening";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Download, ExternalLink, Star, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, Star, Trash2 } from "lucide-react";
 
 const candidateQuery = (id: string) =>
   queryOptions({
@@ -37,7 +41,18 @@ const candidateQuery = (id: string) =>
     queryFn: () => getCandidate({ data: { id } }),
   });
 
+const siblingsQuery = (jobAdId: string) =>
+  queryOptions({
+    queryKey: ["candidates", "by-ad", jobAdId],
+    queryFn: () => listCandidates({ data: { job_ad_id: jobAdId } }),
+  });
+
+const detailSearchSchema = z.object({
+  from: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/_authenticated/staff/$id")({
+  validateSearch: zodValidator(detailSearchSchema),
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(candidateQuery(params.id)),
   component: CandidateDetailPage,
