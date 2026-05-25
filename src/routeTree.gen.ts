@@ -20,7 +20,7 @@ import { Route as AuthenticatedTalentportalIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedPortalIndexRouteImport } from './routes/_authenticated.portal.index'
 import { Route as AuthenticatedTalentportalStaffRouteImport } from './routes/_authenticated.talentportal.staff'
 import { Route as AuthenticatedTalentportalMainRouteImport } from './routes/_authenticated.talentportal.main'
-import { Route as AuthenticatedTalentportalClientRouteImport } from './routes/_authenticated.talentportal.client'
+import { Route as AuthenticatedTalentportalClientRouteImport } from './routes/_authenticated.talentportal/client'
 import { Route as AuthenticatedPortalShortlistRouteImport } from './routes/_authenticated.portal.shortlist'
 import { Route as AuthenticatedPortalSettingsRouteImport } from './routes/_authenticated.portal.settings'
 import { Route as AuthenticatedPortalClientsRouteImport } from './routes/_authenticated.portal.clients'
@@ -696,3 +696,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
