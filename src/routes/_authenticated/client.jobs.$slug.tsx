@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   getJobAdBySlug,
   listCandidates,
@@ -120,6 +121,14 @@ function ClientJobAdView() {
     }
     return true;
   });
+
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [tab, stageFilter, search]);
+  const totalRows = rows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const daysLive = ad.authorized_at
     ? Math.max(
@@ -297,7 +306,7 @@ function ClientJobAdView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((c) => {
+              {pageRows.map((c) => {
                 const sid = resolveStageId(c);
                 const cur = sid ? stageById.get(sid) : null;
                 return (
@@ -352,6 +361,22 @@ function ClientJobAdView() {
             </TableBody>
           </Table>
         )}
+        {totalRows > PAGE_SIZE && (
+          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+            <span className="text-muted-foreground">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalRows)} of {totalRows}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Prev
+              </Button>
+              <span className="text-muted-foreground">Page {safePage} of {pageCount}</span>
+              <Button variant="outline" size="sm" disabled={safePage >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -372,7 +397,8 @@ function NameCell({
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        className="inline-flex items-center gap-1 font-medium text-foreground transition-colors hover:text-[#0A66C2] hover:underline"
+        title="Open LinkedIn profile"
       >
         {name}
         <ExternalLink className="h-3 w-3" />

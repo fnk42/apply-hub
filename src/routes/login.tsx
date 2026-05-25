@@ -40,6 +40,8 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"signin" | "forgot">("signin");
+  const [resetBusy, setResetBusy] = useState(false);
 
   const resolveDestination = useCallback(async (): Promise<string> => {
     // Honor an explicit, non-surface redirect (e.g. deep link).
@@ -91,6 +93,28 @@ function LoginPage() {
     }
   }
 
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast.error("Enter your email above first");
+      return;
+    }
+    setResetBusy(true);
+    try {
+      await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      toast.success("If that email exists, a reset link has been sent.");
+      setMode("signin");
+    } catch (err: any) {
+      // Don't leak — still show generic success
+      toast.success("If that email exists, a reset link has been sent.");
+      setMode("signin");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   const cameFromApply = redirectTo.startsWith("/apply");
 
   return (
@@ -102,41 +126,81 @@ function LoginPage() {
           </Link>
         )}
         <div className="rounded-lg border border-border bg-card p-8 shadow-sm">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{company.name} portal</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {mode === "signin" ? "Sign in" : "Reset password"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mode === "signin"
+              ? `${company.name} portal`
+              : "Enter your email and we'll send a reset link."}
+          </p>
 
-          <form onSubmit={handleEmail} className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+          {mode === "signin" ? (
+            <form onSubmit={handleEmail} className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
-            </div>
-            <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              Sign in
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <button
+                    type="button"
+                    onClick={() => setMode("forgot")}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                Sign in
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleForgot} className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <Button type="submit" disabled={resetBusy} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                {resetBusy ? "Sending…" : "Send reset link"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+              >
+                ← Back to sign in
+              </button>
+            </form>
+          )}
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
             Access is invite-only.
@@ -146,3 +210,4 @@ function LoginPage() {
     </main>
   );
 }
+

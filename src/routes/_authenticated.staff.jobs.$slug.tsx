@@ -4,7 +4,15 @@ import {
   useSuspenseQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 import {
   getJobAdBySlug,
   getMyRoles,
@@ -170,18 +178,6 @@ function JobAdDetailPage() {
     return true;
   });
 
-  const FIT_CYCLE = ["unrated", "strong", "medium", "weak"] as const;
-  async function cycleFit(id: string, current: string) {
-    const idx = FIT_CYCLE.indexOf(current as any);
-    const next = FIT_CYCLE[(idx + 1) % FIT_CYCLE.length];
-    try {
-      await updateCandidate({ data: { id, patch: { fit: next } } });
-      qc.invalidateQueries({ queryKey: ["candidates"] });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed");
-    }
-  }
-
   const daysLive = ad.authorized_at
     ? Math.max(
         0,
@@ -190,6 +186,68 @@ function JobAdDetailPage() {
         ),
       )
     : null;
+
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [tab, stageFilter, search]);
+
+  const totalRows = rows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  type FitVal = "unrated" | "weak" | "medium" | "strong";
+  const candKey = ["candidates", "by-ad", ad.id] as const;
+  const clickRef = useRef<Map<string, { count: number; timer: ReturnType<typeof setTimeout>; prev: FitVal }>>(new Map());
+
+  function applyOptimistic(id: string, next: FitVal) {
+    qc.setQueryData(candKey, (old: any) => {
+      if (!old?.candidates) return old;
+      return {
+        ...old,
+        candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: next } : c)),
+      };
+    });
+  }
+
+
+
+  async function commitFit(id: string, next: FitVal, prev: FitVal) {
+    try {
+      await updateCandidate({ data: { id, patch: { fit: next } } });
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+    } catch (e: any) {
+      qc.setQueryData(candKey, (old: any) => {
+        if (!old?.candidates) return old;
+        return {
+          ...old,
+          candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: prev } : c)),
+        };
+      });
+      toast.error(e?.message || "Failed");
+    }
+  }
+
+  function bumpFit(id: string, currentFit: string) {
+    const entry = clickRef.current.get(id);
+    const count = (entry?.count ?? 0) + 1;
+    const prev: FitVal = (entry?.prev ?? (currentFit as FitVal));
+    if (entry?.timer) clearTimeout(entry.timer);
+    const next: FitVal = count === 1 ? "weak" : count === 2 ? "medium" : "strong";
+    applyOptimistic(id, next);
+    const timer = setTimeout(() => {
+      clickRef.current.delete(id);
+      void commitFit(id, next, prev);
+    }, 400);
+    clickRef.current.set(id, { count, timer, prev });
+  }
+
+  async function clearFit(id: string, currentFit: string) {
+    applyOptimistic(id, "unrated");
+    await commitFit(id, "unrated", currentFit as FitVal);
+  }
+
+
 
   async function toggleShortlist(id: string, current: boolean) {
     try {
@@ -434,10 +492,11 @@ function JobAdDetailPage() {
                 <TableHead>Fit</TableHead>
                 <TableHead className="w-[90px]">Resume</TableHead>
                 <TableHead className="w-[100px] text-center">Shortlist</TableHead>
+                <TableHead className="w-[40px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((c) => (
+              {pageRows.map((c) => (
                 <TableRow
                   key={c.id}
                   className="cursor-pointer"
@@ -490,8 +549,8 @@ function JobAdDetailPage() {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      onClick={() => cycleFit(c.id, c.fit)}
-                      title="Click to cycle fit"
+                      onClick={() => bumpFit(c.id, c.fit)}
+                      title="1 click = weak, 2 = medium, 3 = strong"
                       className="cursor-pointer rounded-full ring-offset-background transition hover:ring-2 hover:ring-ring hover:ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <FitBadge value={c.fit} />
@@ -519,10 +578,77 @@ function JobAdDetailPage() {
                       />
                     </button>
                   </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()} className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="More actions"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id } })}
+                        >
+                          Open candidate
+                        </DropdownMenuItem>
+                        {c.linkedin_url && /^https?:\/\//i.test(c.linkedin_url) && (
+                          <DropdownMenuItem onClick={() => openExternal(c.linkedin_url!)}>
+                            Open LinkedIn
+                          </DropdownMenuItem>
+                        )}
+                        {(c as any).resume_url && (
+                          <DropdownMenuItem
+                            onClick={() => void openResumeInNewTab((c as any).resume_url)}
+                          >
+                            Open resume
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => toggleShortlist(c.id, !!c.shortlisted)}>
+                          {c.shortlisted ? "Remove from shortlist" : "Add to shortlist"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => void clearFit(c.id, c.fit)}>
+                          Clear fit rating
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {totalRows > PAGE_SIZE && (
+          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+            <span className="text-muted-foreground">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalRows)} of {totalRows}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Prev
+              </Button>
+              <span className="text-muted-foreground">
+                Page {safePage} of {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -545,7 +671,8 @@ function NameCell({
           e.stopPropagation();
           openExternal(linkedinUrl!);
         }}
-        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        className="inline-flex items-center gap-1 font-medium text-foreground transition-colors hover:text-[#0A66C2] hover:underline"
+        title="Open LinkedIn profile"
       >
         {name}
         <ExternalLink className="h-3 w-3" />
