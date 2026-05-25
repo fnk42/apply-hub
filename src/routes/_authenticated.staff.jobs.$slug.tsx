@@ -211,22 +211,6 @@ function JobAdDetailPage() {
   }
 
 
-  async function commitFit(id: string, next: FitVal, prev: FitVal) {
-    try {
-      await updateCandidate({ data: { id, patch: { fit: next } } });
-      qc.invalidateQueries({ queryKey: ["candidates"] });
-    } catch (e: any) {
-      // rollback
-      qc.setQueryData(candKey, (old: any) => {
-        if (!old?.candidates) return old;
-        return {
-          ...old,
-          candidates: old.candidates.map((c: any) => (c.id === id ? { ...c, fit: prev } : c)),
-        };
-      });
-      toast.error(e?.message || "Failed");
-    }
-  }
 
   async function commitFit(id: string, next: FitVal, prev: FitVal) {
     try {
