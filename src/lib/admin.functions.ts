@@ -238,8 +238,42 @@ export const listInternalUsers = createServerFn({ method: "GET" })
         email: u.email ?? "",
         roles: byUser.get(u.id) ?? [],
         last_sign_in_at: u.last_sign_in_at ?? null,
+        invited_at: (u as { invited_at?: string | null }).invited_at ?? null,
       }));
     return { users };
+  });
+
+export const resendInternalInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ email: z.string().trim().email().max(255) }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const redirectBaseUrl = (
+      process.env.SITE_URL ||
+      process.env.PUBLIC_SITE_URL ||
+      "https://gptalentportal.com"
+    ).replace(/\/$/, "");
+    const email = data.email.toLowerCase();
+
+    const { error: invErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email,
+      { redirectTo: `${redirectBaseUrl}/reset-password` },
+    );
+    if (invErr) {
+      const msg = invErr.message?.toLowerCase() ?? "";
+      if (msg.includes("already") || msg.includes("registered")) {
+        const { error: resetErr } =
+          await supabaseAdmin.auth.resetPasswordForEmail(email, {
+            redirectTo: `${redirectBaseUrl}/reset-password`,
+          });
+        if (resetErr) throw new Error(resetErr.message);
+      } else {
+        throw new Error(invErr.message);
+      }
+    }
+    return { ok: true };
   });
 
 export const inviteInternalUser = createServerFn({ method: "POST" })

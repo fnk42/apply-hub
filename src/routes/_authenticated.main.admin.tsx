@@ -14,6 +14,7 @@ import {
   listAllJobAds,
   listInternalUsers,
   inviteInternalUser,
+  resendInternalInvite,
   setUserRole,
   removeInternalUser,
 } from "@/lib/admin.functions";
@@ -496,6 +497,19 @@ function TeamTab() {
     }
   }
 
+  async function doResend(userId: string, userEmail: string) {
+    setBusy(userId);
+    try {
+      await resendInternalInvite({ data: { email: userEmail } });
+      toast.success(`Invite re-sent to ${userEmail}`);
+      await invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resend");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="rounded-lg border border-border bg-card p-6">
@@ -556,6 +570,7 @@ function TeamTab() {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Last sign-in</TableHead>
+                <TableHead>Last invited</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -587,38 +602,53 @@ function TeamTab() {
                         ? format(new Date(u.last_sign_in_at), "d MMM yyyy")
                         : "Never"}
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {u.invited_at
+                        ? format(new Date(u.invited_at), "d MMM yyyy")
+                        : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy === u.id}
-                            className="text-destructive hover:bg-destructive/10"
-                          >
-                            Revoke
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Revoke access?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {u.email} will no longer be able to sign in to
-                              the recruiter portal. Their auth account stays,
-                              but all roles are removed.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => doRemove(u.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy === u.id}
+                          onClick={() => doResend(u.id, u.email)}
+                        >
+                          Resend invite
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy === u.id}
+                              className="text-destructive hover:bg-destructive/10"
                             >
-                              Revoke access
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              Revoke
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Revoke access?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {u.email} will no longer be able to sign in to
+                                the recruiter portal. Their auth account stays,
+                                but all roles are removed.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => doRemove(u.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Revoke access
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
