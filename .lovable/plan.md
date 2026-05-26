@@ -1,26 +1,42 @@
-## Problem
+## Goal
 
-The reset email lands in inbox, but clicking the link opens Lovable's hosted page instead of `gptalentportal.com/reset-password`. Two causes:
+Nobody should ever see the public `gptalentportal.com/` "Open roles" page again. It's the page Dickson landed on after clicking his invite, and it's also where stray traffic ends up. The apply links (`/apply/$slug`) keep working as direct deep links — candidates with a form URL go straight to the form.
 
-1. **`redirectTo` uses `window.location.origin`** in `src/routes/login.tsx` (the forgot-password form). If the request is initiated from the Lovable preview/published `*.lovable.app` host, the link redirects back there.
-2. **Supabase's default auth email template** wraps the link through Supabase's `/auth/v1/verify` endpoint and, when the explicit `redirectTo` isn't in the allowlist, falls back to the project's **Site URL** — currently the Lovable default — so the user ends up on Lovable's page.
+## Behavior after change
 
-## Plan
+- **`/` (root)** — no longer renders the Open roles list. Instead it redirects:
+  - Not signed in → `/login`
+  - Signed in as **admin** → `/main` (admin dashboard, current behavior)
+  - Signed in as **member** → `/staff/candidates` (which already auto-opens the first live job ad)
+  - Signed in as **client** → `/client` (which already auto-opens their first live ad)
+  - Signed in but no role → `/unauthorized`
+- **`/apply/$slug`** — unchanged. Candidates with a direct form URL go straight to the form, no detour.
+- **`/login`** — unchanged. After sign-in the existing role-router in `login.tsx` already sends each role to the right surface.
+- **`/portal`** — unchanged (already role-routes the same way).
 
-### 1. Hard-code the production domain as `redirectTo`
-In `src/routes/login.tsx` (forgot-password handler) replace `window.location.origin` with a fixed base — `https://gptalentportal.com` — so every reset link, regardless of where it was triggered from, points to our domain. (Server-side `inviteClient` / admin reset already use `gptalentportal.com` as the fallback; we'll mirror that on the client.)
+## Change
 
-### 2. Add `gptalentportal.com` to the auth redirect allowlist + Site URL
-Set the Supabase Auth **Site URL** to `https://gptalentportal.com` and add `https://gptalentportal.com/**` (plus the `www` variant) to the **Additional Redirect URLs** allowlist. Without this, Supabase silently ignores the `redirectTo` and bounces to whatever Site URL is configured (currently lovable.app).
+Rewrite `src/routes/index.tsx` so the route is purely a redirect — no UI, no loader for live ads, no "Staff sign in" footer. Use a `beforeLoad` that:
 
-This is done from **Cloud → Users → Auth Settings → URL Configuration**. I'll surface the dialog for you to apply, since the API tool we have (`configure_auth`) does not expose Site URL / allowlist.
+1. Calls `supabase.auth.getUser()`.
+2. If no user → `throw redirect({ to: "/login" })`.
+3. If user → call `getPortalShell()` to get roles, then redirect to the role's home (`/main`, `/staff/candidates`, `/client`, or `/unauthorized`).
 
-### 3. (Optional but recommended) Scaffold branded auth email templates
-This routes the email link through our own `/lovable/email/auth/webhook` server route on the custom domain instead of Supabase's hosted verify page, so the entire flow stays on `gptalentportal.com`. Templates will inherit the app's brand colors. Requires the email domain to already be verified (it is — emails are landing).
+Drop the `head()` meta for "Open roles" since the page no longer exists as a public surface. Keep the file (TanStack needs a route at `/`), but the component becomes `() => null`.
 
-### Files changed
-- `src/routes/login.tsx` — replace `window.location.origin` with `https://gptalentportal.com` in the forgot-password call.
-- (If you approve step 3) `supabase/functions/auth-email-hook/*` + `_shared/email-templates/*.tsx` scaffolded automatically.
+## Why this also fixes the invite issue
 
-### What you'll need to do manually
-Update Site URL + redirect allowlist in Cloud → Users → Auth Settings. I'll give you the exact values once you approve.
+Supabase invite/recovery links land on the site root with a `#access_token=…` hash, then the client redirects. Today that redirect target is `/` itself, which renders Open roles — explaining Dickson's screenshot. After this change:
+- The hash session is picked up by the Supabase client on load.
+- `/` immediately role-routes the now-signed-in user into the portal.
+- For brand-new invitees (no password set yet), the existing `/reset-password` page is still the explicit `redirectTo` we pass in `resendInternalInvite`, so they land there directly from the invite email and set a password — they never hit `/`.
+
+## Files
+
+- `src/routes/index.tsx` — replace contents with a redirect-only route (no UI, no live-ads query, no footer link).
+
+## Out of scope
+
+- No changes to `/apply/$slug`, `/login`, `/portal`, `/main`, `/staff`, `/client`, or any admin functionality.
+- No changes to the invite email, reset-password page, or email hook.
+- The `listLiveJobAds` server function stays — it's still used by the portal shells.
