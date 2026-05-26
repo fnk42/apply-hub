@@ -497,6 +497,19 @@ function TeamTab() {
     }
   }
 
+  async function doResend(userId: string, userEmail: string) {
+    setBusy(userId);
+    try {
+      await resendInternalInvite({ data: { email: userEmail } });
+      toast.success(`Invite re-sent to ${userEmail}`);
+      await invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resend");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="rounded-lg border border-border bg-card p-6">
