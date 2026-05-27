@@ -52,7 +52,6 @@ export function AppSidebarJobs() {
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
 
-  const appName = data?.appName ?? "Project Dashboard";
   const allAds = data?.ads ?? [];
   const roles = data?.roles ?? [];
   const isAdmin = roles.includes("admin");
@@ -64,12 +63,9 @@ export function AppSidebarJobs() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
-        <Link to={home} className="flex flex-col leading-tight">
+        <Link to={home} className="block leading-tight">
           <span className="font-serif text-lg tracking-tight text-sidebar-foreground">
-            {appName}
-          </span>
-          <span className="text-xs text-sidebar-foreground/60">
-            {isInternal ? "Search Portal" : "Client Portal"}
+            Golden Pipit Recruiting
           </span>
         </Link>
       </SidebarHeader>

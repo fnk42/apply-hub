@@ -148,6 +148,7 @@ function JobAdDetailPage() {
   const { data: rolesData } = useSuspenseQuery(rolesQuery);
   const isAdmin = rolesData.roles.includes("admin");
   const isInternal = isAdmin || rolesData.roles.includes("member");
+  const isClient = rolesData.roles.includes("client");
   const stages = stagesData.stages;
   const stageById = new Map(stages.map((s) => [s.id, s]));
   const navigate = useNavigate();
@@ -342,7 +343,7 @@ function JobAdDetailPage() {
                 <Pencil className="mr-1 h-4 w-4" /> Edit ad
               </Button>
             )}
-            {isInternal && (
+            {!isClient && (
               <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
                 <Link to="/jobs/$slug/add-candidate" params={{ slug }}>
                   <Plus className="mr-1 h-4 w-4" /> Add candidate
