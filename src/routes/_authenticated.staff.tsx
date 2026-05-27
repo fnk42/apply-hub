@@ -8,13 +8,7 @@ import { NotificationBell } from "@/components/portal/NotificationBell";
 export const Route = createFileRoute("/_authenticated/staff")({
   beforeLoad: async ({ context }) => {
     const { roles } = await context.queryClient.ensureQueryData(shellQuery);
-    // Admin + member always allowed. Clients allowed temporarily for
-    // shared job pages until Prompt 5 introduces /client/jobs/$slug.
-    const ok =
-      roles.includes("admin") ||
-      roles.includes("member") ||
-      roles.includes("client");
-    if (!ok) throw redirect({ to: "/unauthorized" });
+    if (roles.length === 0) throw redirect({ to: "/unauthorized" });
   },
   component: StaffLayout,
 });
