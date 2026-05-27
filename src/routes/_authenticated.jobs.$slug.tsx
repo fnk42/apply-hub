@@ -24,6 +24,7 @@ import { openResumeInNewTab } from "@/lib/open-resume";
 import { setJobAdStatus, updateJobAd } from "@/lib/jobs.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -351,6 +352,11 @@ function JobAdDetailPage() {
           </div>
         </div>
       </div>
+
+      <JobProgressBanner
+        createdAt={ad.created_at}
+        candidateCount={stats.app_count}
+      />
 
       {/* JD Panel */}
       <JdPanel
@@ -998,5 +1004,99 @@ function ResumeLink({ path }: { path: string | null }) {
   );
 }
 
+function JobProgressBanner({
+  createdAt,
+  candidateCount,
+}: {
+  createdAt: string;
+  candidateCount: number;
+}) {
+  const CAP = 200;
+  const WINDOW_DAYS = 30;
+  const daysElapsed = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000),
+  );
+  const daysShown = Math.min(daysElapsed, WINDOW_DAYS);
+  const candidatePct = Math.min(100, Math.round((candidateCount / CAP) * 100));
+  const timePct = Math.min(100, Math.round((daysShown / WINDOW_DAYS) * 100));
 
+  let statusText: string;
+  let statusClass: string;
+  if (candidateCount >= CAP) {
+    statusText = `Cap reached — ${candidateCount} candidates`;
+    statusClass = "text-emerald-700";
+  } else if (daysElapsed === 0) {
+    statusText = "Just opened — pace will appear after the first day";
+    statusClass = "text-muted-foreground";
+  } else if (daysElapsed >= WINDOW_DAYS) {
+    statusText = `Window closed — reached ${candidateCount} of ${CAP}`;
+    statusClass = "text-amber-700";
+  } else {
+    const daily = candidateCount / daysElapsed;
+    const projected = Math.round(daily * WINDOW_DAYS);
+    if (projected >= CAP) {
+      const daysToCap = Math.ceil(CAP / daily);
+      const spare = Math.max(0, WINDOW_DAYS - daysToCap);
+      statusText = `On pace to reach ${CAP} with ${spare} day${spare === 1 ? "" : "s"} to spare`;
+      statusClass = "text-emerald-700";
+    } else {
+      statusText = `At current pace, ~${projected} candidate${projected === 1 ? "" : "s"} by close`;
+      statusClass = "text-amber-700";
+    }
+  }
 
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-card p-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <ProgressMetric
+          label="Candidates"
+          value={candidateCount}
+          unit={`/ ${CAP}`}
+          percent={candidatePct}
+        />
+        <ProgressMetric
+          label="Time"
+          value={daysShown}
+          unit={`/ ${WINDOW_DAYS} days`}
+          percent={timePct}
+        />
+      </div>
+      <div className={cn("mt-4 text-sm font-medium", statusClass)}>
+        {statusText}
+      </div>
+    </div>
+  );
+}
+
+function ProgressMetric({
+  label,
+  value,
+  unit,
+  percent,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  percent: number;
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {percent}%
+        </span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="font-serif text-3xl tracking-tight tabular-nums">
+          {value}
+        </span>
+        <span className="text-sm text-muted-foreground">{unit}</span>
+      </div>
+      <Progress value={percent} className="mt-3" />
+    </div>
+  );
+}
