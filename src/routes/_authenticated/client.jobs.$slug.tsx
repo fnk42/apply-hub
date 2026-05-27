@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -58,13 +58,12 @@ const stagesQuery = (jobAdId: string) =>
   });
 
 export const Route = createFileRoute("/_authenticated/client/jobs/$slug")({
-  loader: async ({ context, params }) => {
-    const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
-    if (!ad) throw notFound();
-    await Promise.all([
-      context.queryClient.ensureQueryData(candidatesQuery(ad.id)),
-      context.queryClient.ensureQueryData(stagesQuery(ad.id)),
-    ]);
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/jobs/$slug",
+      params: { slug: params.slug },
+      replace: true,
+    });
   },
   component: ClientJobAdView,
   notFoundComponent: () => (

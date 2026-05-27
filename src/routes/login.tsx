@@ -17,9 +17,13 @@ function normalizeRedirect(value: string | null | undefined) {
 }
 
 function destinationForRoles(roles: string[]): string {
-  if (roles.includes("admin")) return "/main";
-  if (roles.includes("member")) return "/staff";
-  if (roles.includes("client")) return "/client";
+  if (
+    roles.includes("admin") ||
+    roles.includes("member") ||
+    roles.includes("client")
+  ) {
+    return "/jobs";
+  }
   return "/unauthorized";
 }
 
