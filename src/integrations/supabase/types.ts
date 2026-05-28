@@ -122,6 +122,7 @@ export type Database = {
           pipeline_status: string
           recruiter_notes: string | null
           resume_url: string | null
+          salary_expectation: string | null
           screening_answers: Json
           shortlisted: boolean
           source: string
@@ -145,6 +146,7 @@ export type Database = {
           pipeline_status?: string
           recruiter_notes?: string | null
           resume_url?: string | null
+          salary_expectation?: string | null
           screening_answers?: Json
           shortlisted?: boolean
           source?: string
@@ -168,6 +170,7 @@ export type Database = {
           pipeline_status?: string
           recruiter_notes?: string | null
           resume_url?: string | null
+          salary_expectation?: string | null
           screening_answers?: Json
           shortlisted?: boolean
           source?: string
