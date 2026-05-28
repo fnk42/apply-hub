@@ -81,7 +81,7 @@ function NewJobAdForm() {
   const [isBillable, setIsBillable] = useState(true);
   const [fee, setFee] = useState(defaultFee);
   const [status, setStatus] = useState<"pending_authorization" | "live" | "draft">(
-    "pending_authorization",
+    "live",
   );
   const [submitting, setSubmitting] = useState(false);
 
