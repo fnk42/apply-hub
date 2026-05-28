@@ -681,6 +681,7 @@ function EditJobAdDialog({
     start_date: string | null;
     is_billable: boolean;
     posting_fee: number | null;
+    status: string;
   };
   onSaved: () => void;
 }) {
@@ -692,6 +693,11 @@ function EditJobAdDialog({
   const [startDate, setStartDate] = useState(ad.start_date ?? "");
   const [isBillable, setIsBillable] = useState(ad.is_billable);
   const [postingFee, setPostingFee] = useState<string>(ad.posting_fee != null ? String(ad.posting_fee) : "");
+  const [status, setStatus] = useState<"live" | "pending_authorization" | "closed">(
+    (ad.status === "live" || ad.status === "closed" || ad.status === "pending_authorization")
+      ? ad.status
+      : "pending_authorization",
+  );
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
