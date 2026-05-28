@@ -720,6 +720,9 @@ function EditJobAdDialog({
           },
         },
       });
+      if (status !== ad.status) {
+        await setJobAdStatus({ data: { id: ad.id, status } });
+      }
       toast.success("Ad updated");
       onSaved();
       onOpenChange(false);
