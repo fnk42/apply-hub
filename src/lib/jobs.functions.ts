@@ -40,7 +40,7 @@ const createInput = z.object({
   start_date: z.string().optional().or(z.literal("")),
   is_billable: z.boolean().default(true),
   posting_fee: z.number().int().min(0).max(100_000_000).optional().nullable(),
-  status: z.enum(["pending_authorization", "live", "draft"]).default("pending_authorization"),
+  status: z.enum(["pending_authorization", "live", "draft"]).default("live"),
 });
 
 export const createJobAd = createServerFn({ method: "POST" })
