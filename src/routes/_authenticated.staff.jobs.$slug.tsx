@@ -656,7 +656,7 @@ function JobAdDetailPage() {
       <EditJobAdDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        ad={ad}
+        ad={ad as any}
         onSaved={() => qc.invalidateQueries({ queryKey: ["job-ad", slug] })}
       />
     </div>
