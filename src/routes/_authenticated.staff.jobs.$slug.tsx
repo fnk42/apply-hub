@@ -780,6 +780,19 @@ function EditJobAdDialog({
                 onChange={(e) => setPostingFee(e.target.value)} placeholder="35000" />
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="edit-ad-status">Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+              <SelectTrigger id="edit-ad-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="live">Live</SelectItem>
+                <SelectItem value="pending_authorization">Pending authorization</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
