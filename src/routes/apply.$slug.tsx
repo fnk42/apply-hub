@@ -60,9 +60,14 @@ const baseSchema = z.object({
     .int()
     .min(0, "Must be 0 or more")
     .max(60, "Must be 60 or less"),
+  current_expected_salary: z.string().trim().max(80).optional().or(z.literal("")),
   cover_note: z.string().trim().max(500).optional().or(z.literal("")),
   honeypot: z.string().max(0).optional().or(z.literal("")),
 });
+
+function formatSalary(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
 
 function buildScreeningSchema() {
   const shape: Record<string, z.ZodTypeAny> = {};
@@ -95,6 +100,7 @@ function ApplyPage() {
   const [companyNA, setCompanyNA] = useState(false);
   const [companyVal, setCompanyVal] = useState("");
   const [yoeVal, setYoeVal] = useState<string>("");
+  const [salaryVal, setSalaryVal] = useState<string>("");
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {};
     for (const q of screeningQuestions) {
@@ -146,6 +152,7 @@ function ApplyPage() {
       linkedin_url: String(form.get("linkedin_url") || ""),
       current_company: companyNA ? "" : companyVal.trim(),
       years_of_experience: yoeNum,
+      current_expected_salary: salaryVal.trim(),
       cover_note: String(form.get("cover_note") || ""),
       honeypot: String(form.get("website") || ""),
     };
@@ -215,6 +222,7 @@ function ApplyPage() {
           current_company: values.current_company,
           years_of_experience: values.years_of_experience,
           cover_note: values.cover_note,
+          salary_expectation: values.current_expected_salary,
           resume_path: uploaded.path,
           screening_answers: answers,
           honeypot: "",
@@ -316,6 +324,20 @@ function ApplyPage() {
             value={yoeVal}
             onChange={(e) => setYoeVal(e.target.value)}
             required
+          />
+        </Field>
+
+        <Field
+          label="Current / expected salary (KES per month)"
+          error={errors.current_expected_salary}
+        >
+          <Input
+            value={formatSalary(salaryVal)}
+            onChange={(e) =>
+              setSalaryVal(e.target.value.replace(/\D/g, ""))
+            }
+            maxLength={80}
+            placeholder="e.g. 150,000"
           />
         </Field>
 

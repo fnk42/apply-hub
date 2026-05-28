@@ -64,6 +64,7 @@ const submitInput = z.object({
   current_company: z.string().trim().max(160).optional().or(z.literal("")),
   years_of_experience: z.number().int().min(0).max(60),
   cover_note: z.string().trim().max(2000).optional().or(z.literal("")),
+  salary_expectation: z.string().trim().max(80).optional().or(z.literal("")),
   resume_path: z.string().trim().min(1).max(500),
   screening_answers: z.record(z.string(), z.any()).default({}),
   honeypot: z.string().max(0).optional().or(z.literal("")),
@@ -103,6 +104,7 @@ export const submitApplication = createServerFn({ method: "POST" })
       years_of_experience: data.years_of_experience,
       resume_url: data.resume_path,
       cover_note: data.cover_note || null,
+      salary_expectation: data.salary_expectation || null,
       screening_answers: data.screening_answers ?? {},
     });
     if (error) throw new Error(error.message);
