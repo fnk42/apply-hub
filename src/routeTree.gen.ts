@@ -43,6 +43,7 @@ import { Route as AuthenticatedStaffJobsIndexRouteImport } from './routes/_authe
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as AuthenticatedStaffJobsNewRouteImport } from './routes/_authenticated.staff.jobs.new'
 import { Route as AuthenticatedStaffJobsSlugRouteImport } from './routes/_authenticated.staff.jobs.$slug'
 import { Route as AuthenticatedMainJobsNewRouteImport } from './routes/_authenticated.main.jobs.new'
 import { Route as AuthenticatedMainClientsIdRouteImport } from './routes/_authenticated.main.clients.$id'
@@ -236,6 +237,12 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedStaffJobsNewRoute =
+  AuthenticatedStaffJobsNewRouteImport.update({
+    id: '/jobs/new',
+    path: '/jobs/new',
+    getParentRoute: () => AuthenticatedStaffRoute,
+  } as any)
 const AuthenticatedStaffJobsSlugRoute =
   AuthenticatedStaffJobsSlugRouteImport.update({
     id: '/jobs/$slug',
@@ -321,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/main/clients/$id': typeof AuthenticatedMainClientsIdRoute
   '/main/jobs/new': typeof AuthenticatedMainJobsNewRoute
   '/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
+  '/staff/jobs/new': typeof AuthenticatedStaffJobsNewRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -358,6 +366,7 @@ export interface FileRoutesByTo {
   '/main/clients/$id': typeof AuthenticatedMainClientsIdRoute
   '/main/jobs/new': typeof AuthenticatedMainJobsNewRoute
   '/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
+  '/staff/jobs/new': typeof AuthenticatedStaffJobsNewRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -403,6 +412,7 @@ export interface FileRoutesById {
   '/_authenticated/main/clients/$id': typeof AuthenticatedMainClientsIdRoute
   '/_authenticated/main/jobs/new': typeof AuthenticatedMainJobsNewRoute
   '/_authenticated/staff/jobs/$slug': typeof AuthenticatedStaffJobsSlugRouteWithChildren
+  '/_authenticated/staff/jobs/new': typeof AuthenticatedStaffJobsNewRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/main/clients/$id'
     | '/main/jobs/new'
     | '/staff/jobs/$slug'
+    | '/staff/jobs/new'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -485,6 +496,7 @@ export interface FileRouteTypes {
     | '/main/clients/$id'
     | '/main/jobs/new'
     | '/staff/jobs/$slug'
+    | '/staff/jobs/new'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -529,6 +541,7 @@ export interface FileRouteTypes {
     | '/_authenticated/main/clients/$id'
     | '/_authenticated/main/jobs/new'
     | '/_authenticated/staff/jobs/$slug'
+    | '/_authenticated/staff/jobs/new'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -789,6 +802,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/staff/jobs/new': {
+      id: '/_authenticated/staff/jobs/new'
+      path: '/jobs/new'
+      fullPath: '/staff/jobs/new'
+      preLoaderRoute: typeof AuthenticatedStaffJobsNewRouteImport
+      parentRoute: typeof AuthenticatedStaffRoute
+    }
     '/_authenticated/staff/jobs/$slug': {
       id: '/_authenticated/staff/jobs/$slug'
       path: '/jobs/$slug'
@@ -961,6 +981,7 @@ interface AuthenticatedStaffRouteChildren {
   AuthenticatedStaffShortlistRoute: typeof AuthenticatedStaffShortlistRoute
   AuthenticatedStaffIndexRoute: typeof AuthenticatedStaffIndexRoute
   AuthenticatedStaffJobsSlugRoute: typeof AuthenticatedStaffJobsSlugRouteWithChildren
+  AuthenticatedStaffJobsNewRoute: typeof AuthenticatedStaffJobsNewRoute
   AuthenticatedStaffJobsIndexRoute: typeof AuthenticatedStaffJobsIndexRoute
 }
 
@@ -971,6 +992,7 @@ const AuthenticatedStaffRouteChildren: AuthenticatedStaffRouteChildren = {
   AuthenticatedStaffShortlistRoute: AuthenticatedStaffShortlistRoute,
   AuthenticatedStaffIndexRoute: AuthenticatedStaffIndexRoute,
   AuthenticatedStaffJobsSlugRoute: AuthenticatedStaffJobsSlugRouteWithChildren,
+  AuthenticatedStaffJobsNewRoute: AuthenticatedStaffJobsNewRoute,
   AuthenticatedStaffJobsIndexRoute: AuthenticatedStaffJobsIndexRoute,
 }
 
@@ -1034,13 +1056,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
