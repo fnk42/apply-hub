@@ -656,7 +656,7 @@ function JobAdDetailPage() {
       <EditJobAdDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        ad={ad}
+        ad={ad as any}
         onSaved={() => qc.invalidateQueries({ queryKey: ["job-ad", slug] })}
       />
     </div>
@@ -681,6 +681,7 @@ function EditJobAdDialog({
     start_date: string | null;
     is_billable: boolean;
     posting_fee: number | null;
+    status: string;
   };
   onSaved: () => void;
 }) {
@@ -692,6 +693,11 @@ function EditJobAdDialog({
   const [startDate, setStartDate] = useState(ad.start_date ?? "");
   const [isBillable, setIsBillable] = useState(ad.is_billable);
   const [postingFee, setPostingFee] = useState<string>(ad.posting_fee != null ? String(ad.posting_fee) : "");
+  const [status, setStatus] = useState<"live" | "pending_authorization" | "closed">(
+    (ad.status === "live" || ad.status === "closed" || ad.status === "pending_authorization")
+      ? ad.status
+      : "pending_authorization",
+  );
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -714,6 +720,9 @@ function EditJobAdDialog({
           },
         },
       });
+      if (status !== ad.status) {
+        await setJobAdStatus({ data: { id: ad.id, status } });
+      }
       toast.success("Ad updated");
       onSaved();
       onOpenChange(false);
@@ -771,6 +780,19 @@ function EditJobAdDialog({
                 onChange={(e) => setPostingFee(e.target.value)} placeholder="35000" />
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="edit-ad-status">Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+              <SelectTrigger id="edit-ad-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="live">Live</SelectItem>
+                <SelectItem value="pending_authorization">Pending authorization</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
