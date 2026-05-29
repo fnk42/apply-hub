@@ -112,6 +112,12 @@ export const screeningBySlug: Record<string, ScreeningQuestion[]> = {
 // Shown for any ad whose slug isn't mapped above.
 export const defaultScreening: ScreeningQuestion[] = [];
 
+// Flat list of every question across all slugs. The staff candidate view
+// uses this to label a candidate's stored answers regardless of which ad
+// they applied to (it only renders questions the candidate actually answered).
+export const screeningQuestions: ScreeningQuestion[] =
+  Object.values(screeningBySlug).flat();
+
 export function screeningQuestionsFor(slug: string): ScreeningQuestion[] {
   return screeningBySlug[slug] ?? defaultScreening;
 }
