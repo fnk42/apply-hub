@@ -1,42 +1,37 @@
 ## Goal
 
-Nobody should ever see the public `gptalentportal.com/` "Open roles" page again. It's the page Dickson landed on after clicking his invite, and it's also where stray traffic ends up. The apply links (`/apply/$slug`) keep working as direct deep links — candidates with a form URL go straight to the form.
+Create one shared client login `team@infinitytechafrica.com` for Infinite Tech Africa, reusing the existing one-client-one-user model. No schema, RLS, or auth-code changes.
 
-## Behavior after change
+## Steps
 
-- **`/` (root)** — no longer renders the Open roles list. Instead it redirects:
-  - Not signed in → `/login`
-  - Signed in as **admin** → `/main` (admin dashboard, current behavior)
-  - Signed in as **member** → `/staff/candidates` (which already auto-opens the first live job ad)
-  - Signed in as **client** → `/client` (which already auto-opens their first live ad)
-  - Signed in but no role → `/unauthorized`
-- **`/apply/$slug`** — unchanged. Candidates with a direct form URL go straight to the form, no detour.
-- **`/login`** — unchanged. After sign-in the existing role-router in `login.tsx` already sends each role to the right surface.
-- **`/portal`** — unchanged (already role-routes the same way).
+1. **Look up the Infinite Tech Africa client id** (`SELECT id, auth_user_id FROM clients WHERE name ILIKE 'Infinite Tech Africa'`) and confirm current `auth_user_id` points at felix.njenga.
 
-## Change
+2. **Insert allowed_emails row** (migration, since allowed_emails RLS is admin-only and we have no admin session):
+   ```sql
+   INSERT INTO public.allowed_emails (email, role, client_id)
+   VALUES ('team@infinitytechafrica.com', 'client', '<infinite-tech-id>');
+   ```
 
-Rewrite `src/routes/index.tsx` so the route is purely a redirect — no UI, no loader for live ads, no "Staff sign in" footer. Use a `beforeLoad` that:
+3. **Create the auth user** via Supabase admin API (service role): email `team@infinitytechafrica.com`, password `Infinity@2026!`, `email_confirm: true`. Run as a one-off script using `SUPABASE_SERVICE_ROLE_KEY` (same approach used previously for kafwande@mpshahhospital.org). The `handle_new_user` trigger will:
+   - insert `user_roles` row with role `client` (only — no member role)
+   - attempt to set `clients.auth_user_id` ONLY if currently NULL (it isn't, so it'll be a no-op — handled in step 4)
 
-1. Calls `supabase.auth.getUser()`.
-2. If no user → `throw redirect({ to: "/login" })`.
-3. If user → call `getPortalShell()` to get roles, then redirect to the role's home (`/main`, `/staff/candidates`, `/client`, or `/unauthorized`).
+4. **Reassign `clients.auth_user_id`** to the new user (data update via insert tool):
+   ```sql
+   UPDATE public.clients
+   SET auth_user_id = '<new-user-id>'
+   WHERE id = '<infinite-tech-id>';
+   ```
+   This is what makes the RLS scoping resolve to team@. Felix loses Infinite Tech Africa client-portal access (he was a test user — confirm this is intended; flagged below).
 
-Drop the `head()` meta for "Open roles" since the page no longer exists as a public surface. Keep the file (TanStack needs a route at `/`), but the component becomes `() => null`.
+5. **Verify**:
+   - `auth.users` contains team@infinitytechafrica.com with `email_confirmed_at` set
+   - `user_roles` has exactly one row for this user: `role = 'client'` (no `member`)
+   - `clients.auth_user_id` for Infinite Tech Africa = new user id
+   - Simulate the RLS check: `SELECT id, title FROM job_ads WHERE client_id IN (SELECT id FROM clients WHERE auth_user_id = '<new-user-id>')` returns the `business-development-customer-service-executive` ad and only Infinite Tech Africa ads
+   - Confirm no MP Shah / MK Photography ads are visible under that scoping
+   - No code changes, so build is unaffected — confirm via the normal build hook
 
-## Why this also fixes the invite issue
+## One thing to confirm before I run it
 
-Supabase invite/recovery links land on the site root with a `#access_token=…` hash, then the client redirects. Today that redirect target is `/` itself, which renders Open roles — explaining Dickson's screenshot. After this change:
-- The hash session is picked up by the Supabase client on load.
-- `/` immediately role-routes the now-signed-in user into the portal.
-- For brand-new invitees (no password set yet), the existing `/reset-password` page is still the explicit `redirectTo` we pass in `resendInternalInvite`, so they land there directly from the invite email and set a password — they never hit `/`.
-
-## Files
-
-- `src/routes/index.tsx` — replace contents with a redirect-only route (no UI, no live-ads query, no footer link).
-
-## Out of scope
-
-- No changes to `/apply/$slug`, `/login`, `/portal`, `/main`, `/staff`, `/client`, or any admin functionality.
-- No changes to the invite email, reset-password page, or email hook.
-- The `listLiveJobAds` server function stays — it's still used by the portal shells.
+Felix Njenga's user is currently `clients.auth_user_id` for Infinite Tech Africa. After reassigning, **Felix will no longer be able to log into the client portal as Infinite Tech Africa**. You said he's a test user, so I'll assume that's fine — but say the word if you want me to leave Felix with some other access first (e.g. assign him to a different client, or keep him as a member). Otherwise I'll proceed as above on switch to build mode.
