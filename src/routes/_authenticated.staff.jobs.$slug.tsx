@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, notFound, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import {
   queryOptions,
   useSuspenseQuery,
@@ -110,16 +110,6 @@ const rolesQuery = queryOptions({
 
 
 export const Route = createFileRoute("/_authenticated/staff/jobs/$slug")({
-  beforeLoad: async ({ params }) => {
-    const { roles } = await getMyRoles();
-    const isAdmin = roles.includes("admin");
-    if (!isAdmin && params.slug !== "business-development-manager") {
-      throw redirect({
-        to: "/staff/jobs/$slug",
-        params: { slug: "business-development-manager" },
-      });
-    }
-  },
   loader: async ({ context, params }) => {
     const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
     if (!ad) throw notFound();
