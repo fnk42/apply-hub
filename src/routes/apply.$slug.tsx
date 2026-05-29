@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { getPublicJobAd, submitApplication, uploadPublicResume } from "@/lib/candidates.functions";
 import { company } from "@/config/company";
-import { screeningQuestions } from "@/config/screening";
+import { screeningQuestionsFor, type ScreeningQuestion } from "@/config/screening";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,9 +69,9 @@ function formatSalary(digits: string): string {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function buildScreeningSchema() {
+function buildScreeningSchema(questions: ScreeningQuestion[]) {
   const shape: Record<string, z.ZodTypeAny> = {};
-  for (const q of screeningQuestions) {
+  for (const q of questions) {
     if (q.type === "text") {
       const s = z.string().trim().max(q.max);
       shape[q.id] = q.required ? s.min(1, "Required") : s.optional();
@@ -92,6 +92,7 @@ function ApplyPage() {
   const { data } = useSuspenseQuery(adQuery(slug));
   const ad = data.ad;
   const clientName = data.client_name;
+  const screeningQuestions = screeningQuestionsFor(slug);
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -158,7 +159,7 @@ function ApplyPage() {
     };
 
     const base = baseSchema.safeParse(values);
-    const scr = buildScreeningSchema().safeParse(answers);
+    const scr = buildScreeningSchema(screeningQuestions).safeParse(answers);
 
     const fieldErrors: Record<string, string> = {};
     if (!base.success) {
