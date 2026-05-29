@@ -80,6 +80,11 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
+function formatSalary(digits: string | null | undefined): string {
+  if (!digits) return "—";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 const adQuery = (slug: string) =>
   queryOptions({
     queryKey: ["job-ad", slug],
@@ -155,6 +160,7 @@ function JobAdDetailPage() {
 
   const all = candData.candidates;
   const allCount = all.length;
+  const showSalary = all.some((c) => (c as any).salary_expectation);
   const strongCount = all.filter((c) => c.fit === "strong").length;
   const mediumCount = all.filter((c) => c.fit === "medium").length;
   const shortlistCount = all.filter((c) => c.shortlisted).length;
@@ -486,6 +492,9 @@ function JobAdDetailPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Date sourced</TableHead>
                 <TableHead className="w-[80px] text-right">YOE</TableHead>
+                {showSalary && (
+                  <TableHead className="w-[120px] text-right">Salary</TableHead>
+                )}
                 <TableHead className="w-[200px]">Stage</TableHead>
                 <TableHead>Fit</TableHead>
                 <TableHead className="w-[90px]">Resume</TableHead>
@@ -519,6 +528,11 @@ function JobAdDetailPage() {
                   <TableCell className="text-right tabular-nums">
                     {c.years_of_experience ?? "—"}
                   </TableCell>
+                  {showSalary && (
+                    <TableCell className="text-right tabular-nums">
+                      {formatSalary((c as any).salary_expectation)}
+                    </TableCell>
+                  )}
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     {(() => {
                       const sid = resolveStageId(c);
