@@ -157,10 +157,20 @@ export const listAllJobAds = createServerFn({ method: "GET" })
       (pays ?? []).filter((p) => p.status === "pending").map((p) => p.job_ad_id),
     );
 
+    // Count applications per job ad (used by the delete confirmation dialog).
+    const { data: appRows } = await supabaseAdmin
+      .from("applications")
+      .select("job_ad_id");
+    const appCounts = new Map<string, number>();
+    for (const r of appRows ?? []) {
+      appCounts.set(r.job_ad_id, (appCounts.get(r.job_ad_id) ?? 0) + 1);
+    }
+
     return {
       ads: (ads ?? []).map((a) => ({
         ...a,
         client: clientMap.get(a.client_id) ?? null,
+        app_count: appCounts.get(a.id) ?? 0,
         billing_state: paidJobs.has(a.id)
           ? "paid"
           : pendingJobs.has(a.id)
@@ -172,6 +182,33 @@ export const listAllJobAds = createServerFn({ method: "GET" })
                 : "not_billable",
       })),
     };
+  });
+
+// ---- deleteJobAd (admin) ----
+export const deleteJobAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    // applications -> job_ads is ON DELETE RESTRICT, so applications (and their
+    // events) must be removed before the ad. job_ad_stages and payments are
+    // ON DELETE CASCADE, but we delete them explicitly to mirror deleteClient.
+    const { data: apps } = await supabaseAdmin
+      .from("applications")
+      .select("id")
+      .eq("job_ad_id", data.id);
+    const appIds = (apps ?? []).map((a) => a.id);
+    if (appIds.length > 0) {
+      await supabaseAdmin.from("application_events").delete().in("application_id", appIds);
+      await supabaseAdmin.from("applications").delete().in("id", appIds);
+    }
+    await supabaseAdmin.from("payments").delete().eq("job_ad_id", data.id);
+    await supabaseAdmin.from("job_ad_stages").delete().eq("job_ad_id", data.id);
+
+    const { error } = await supabaseAdmin.from("job_ads").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // ============ NOTIFICATIONS ============

@@ -12,12 +12,14 @@ import {
   getAppSettings,
   updateAppSettings,
   listAllJobAds,
+  deleteJobAd,
   listInternalUsers,
   inviteInternalUser,
   resendInternalInvite,
   setUserRole,
   removeInternalUser,
 } from "@/lib/admin.functions";
+import { Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -195,13 +197,16 @@ function JobAdsTab() {
                     {format(new Date(a.created_at), "d MMM yyyy")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link
-                      to="/staff/jobs/$slug"
-                      params={{ slug: a.slug }}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Open →
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        to="/staff/jobs/$slug"
+                        params={{ slug: a.slug }}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Open →
+                      </Link>
+                      <DeleteJobAdButton ad={a} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -210,6 +215,106 @@ function JobAdsTab() {
         )}
       </div>
     </div>
+  );
+}
+
+function DeleteJobAdButton({
+  ad,
+}: {
+  ad: {
+    id: string;
+    title: string;
+    app_count: number;
+    client: { name: string } | null;
+  };
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const clientName = ad.client?.name ?? "this client";
+  const canDelete = confirmText.trim() === ad.title && !busy;
+
+  async function onDelete() {
+    setBusy(true);
+    try {
+      await deleteJobAd({ data: { id: ad.id } });
+      toast.success(`Deleted "${ad.title}"`);
+      setOpen(false);
+      qc.invalidateQueries({ queryKey: ["admin-job-ads"] });
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      qc.invalidateQueries({ queryKey: ["portal-shell"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete job ad");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setConfirmText("");
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Delete ${ad.title}`}
+          title="Delete job ad"
+          className="text-muted-foreground transition-colors hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete job ad?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                You are about to delete{" "}
+                <span className="font-medium text-foreground">{ad.title}</span> for{" "}
+                <span className="font-medium text-foreground">{clientName}</span>.
+              </p>
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                This will permanently delete {ad.app_count} application
+                {ad.app_count === 1 ? "" : "s"} for {clientName}. This cannot be undone.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor={`confirm-delete-${ad.id}`} className="text-foreground">
+                  Type{" "}
+                  <span className="font-medium">{ad.title}</span> to confirm
+                </Label>
+                <Input
+                  id={`confirm-delete-${ad.id}`}
+                  autoComplete="off"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={ad.title}
+                />
+              </div>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              onDelete();
+            }}
+            disabled={!canDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {busy ? "Deleting…" : "Delete job ad"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
