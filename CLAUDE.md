@@ -15,6 +15,23 @@ No test runner is configured. Both Bun (`bun.lock`) and npm (`package-lock.json`
 
 Path alias: `@/*` → `src/*` (TS + Vite). Use `@/components/ui/...`, `@/lib/...`, etc.
 
+## Deploy architecture (critical)
+
+- Production (`gptalentportal.com` / `www.gptalentportal.com`) is a **Cloudflare Worker deployed via Lovable Cloud's platform** — NOT GitHub Pages. There is no `.github/workflows`. **Pushing to GitHub `main` does NOT auto-deploy.**
+- The bare GitHub Pages URL (`fnk42.github.io/apply-hub`) is a **stale legacy artifact** — ignore it; it is not production.
+- Deploy flow: edit in Claude Code → `bun run build` (must pass) → commit → push `main` → wait for Lovable to sync, then **Publish** in Lovable → hard-refresh `gptalentportal.com` to verify on the LIVE site (Lovable preview ≠ live).
+- **NEVER use Lovable's "Build with AI" to deploy** — it edits code and causes divergence. Use **"Publish"** only.
+
+## Lovable sync behaviour (important)
+
+- Lovable syncs git state from GitHub on its **OWN schedule** — it CANNOT be forced to `git pull` on demand (its sandbox git is platform-managed). If Lovable's timeline/sandbox is behind `origin/main`, you must wait for it to auto-sync before Publish will deploy the latest commit.
+- Lovable's bot also pushes its own commits to `main` periodically (e.g. "Lovable update", `routeTree.gen.ts` regenerations). **ALWAYS `git pull` before starting a Claude Code session**; rebase if push is rejected; **NEVER force-push** over Lovable's commits.
+- `routeTree.gen.ts` is auto-generated — never hand-edit; keep Lovable's version; it's normal for it to show as an unstaged local change.
+
+## Git auth on this machine
+
+- Push uses **HTTPS with a GitHub Personal Access Token** (username `fnk42` + PAT as password). Claude Code's non-interactive shell can't always prompt for it — if a push fails with `could not read Username`, run the push in a normal Terminal tab.
+
 ## Stack
 
 - **TanStack Start** (React 19, file-based routing via `@tanstack/react-router`), deployed to Cloudflare Workers (`wrangler.jsonc`, entry `src/server.ts`).
@@ -84,6 +101,13 @@ Supabase auth events POST to **`/lovable/email/auth/webhook`** (signature-verifi
 
 Supabase project `yclzkcuvhcpyixouvedc` (`supabase/config.toml`). Migrations live under `supabase/migrations/` with the timestamp-uuid filename convention; apply via the Supabase CLI. RLS is the source of truth for client-side queries — when something works in `supabaseAdmin` but fails in `supabase`, suspect missing RLS policies before assuming a bug.
 
+### Data model & schema facts
+
+- **Multi-tenant**: `clients` table, one-client-to-**ONE**-user via `clients.auth_user_id` (NOT many-to-many yet). Multiple users per client requires a `client_users` join table + RLS rewrite — **deferred**. Shared logins currently work by pointing `clients.auth_user_id` at a shared account.
+- `allowed_emails` (`email`, `role`, `client_id`) is the **invite-only gate**; the `handle_new_user` trigger links role + client on signup. RLS enforces client isolation server-side (`clients`/`job_ads`/`applications` gated on `auth_user_id`). The `member` role **bypasses** client scoping (sees all) — never grant it to external client contacts.
+- `applications` has **`ON DELETE RESTRICT`** on `job_ads` (blocks ad delete until applications removed). `application_events`, `job_ad_stages`, `payments` cascade. Correct teardown order (mirrors `deleteClient`): `application_events` → `applications` → `payments` → `job_ad_stages` → `job_ads`.
+- **Screening questions**: `src/config/screening.ts` — `screeningBySlug` keyed by ad slug, plus a derived `screeningQuestions` flat export (`Object.values(screeningBySlug).flat()`) used by the staff candidate view. Adding a role = one slug entry. The **salary field is SEPARATE** (`salary_expectation` column + its own form field), not part of screening.
+
 ## Gotchas
 
 - **Never import `server-only`** — ESLint blocks it (see `eslint.config.js`). TanStack Start uses `*.server.ts` filename suffixes or `@tanstack/react-start/server-only` instead.
@@ -91,3 +115,10 @@ Supabase project `yclzkcuvhcpyixouvedc` (`supabase/config.toml`). Migrations liv
 - The `entities` package is aliased in `vite.config.ts` because of a transitive resolution bug; leave it alone unless you're upgrading the dep.
 - The `_authenticated.tsx` gate runs auth checks in `useEffect` and renders a spinner until a session is confirmed. Do not move this logic into `beforeLoad` — that would re-enable SSR for the subtree and reintroduce the login flash.
 - shadcn `Sonner` toaster lives in `__root.tsx`; don't mount additional `Toaster` instances in child layouts.
+
+## Known issues / tech debt (deferred)
+
+- **THREE near-duplicate candidate-table views** exist (staff-admin `_authenticated.staff.jobs.$slug.tsx`, staff-internal `_authenticated.jobs.$slug.tsx`, client `_authenticated/client.jobs.$slug.tsx`). Features added to one often get missed on the others (this caused the Salary column to be missing from the client/staff-internal views). Extracting a shared `CandidateTable` component would prevent this drift — recommended before building more candidate-table features (#2 fit filters, #3 salary brackets).
+- **delete-job-ad is a HARD delete** (no recovery). Plan: archive (soft-delete) ads that have paid `payments` instead of hard-deleting, to preserve billing records.
+- **Email-invite / magic-link signup does NOT deliver email** (no SMTP configured). Client users are seeded via email+password directly. Wiring up an SMTP provider (Resend/SendGrid) is a future task.
+- A **third hardcoded admin-gate redirect** remains in `_authenticated.staff.activity.tsx` (~line 26) — fragile demo-gating pattern, worth cleaning up.
