@@ -5,8 +5,9 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { getPublicJobAd, submitApplication, uploadPublicResume } from "@/lib/candidates.functions";
+import { getQuestionsForJobAd } from "@/lib/screening.functions";
 import { company } from "@/config/company";
-import { screeningQuestionsFor, type ScreeningQuestion } from "@/config/screening";
+import { type ScreeningQuestion } from "@/config/screening";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +22,20 @@ const adQuery = (slug: string) =>
     queryFn: () => getPublicJobAd({ data: { slug } }),
   });
 
+const questionsQuery = (jobAdId: string) =>
+  queryOptions({
+    queryKey: ["screening-questions", jobAdId],
+    queryFn: () => getQuestionsForJobAd({ data: { job_ad_id: jobAdId } }),
+  });
+
 export const Route = createFileRoute("/apply/$slug")({
-  loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData(adQuery(params.slug)),
+  loader: async ({ context, params }) => {
+    const res = await context.queryClient.ensureQueryData(adQuery(params.slug));
+    if (res.ad) {
+      await context.queryClient.ensureQueryData(questionsQuery(res.ad.id));
+    }
+    return res;
+  },
   head: ({ loaderData }) => {
     const title = loaderData?.ad?.title
       ? `Apply: ${loaderData.ad.title} — ${company.name}`
@@ -55,11 +67,7 @@ const baseSchema = z.object({
   phone: z.string().trim().min(5, "Required").max(40),
   linkedin_url: z.string().trim().min(1, "Required").max(255),
   current_company: z.string().trim().max(160).optional().or(z.literal("")),
-  years_of_experience: z
-    .number()
-    .int()
-    .min(0, "Must be 0 or more")
-    .max(60, "Must be 60 or less"),
+  years_of_experience: z.number().int().min(0, "Must be 0 or more").max(60, "Must be 60 or less"),
   current_expected_salary: z.string().trim().max(80).optional().or(z.literal("")),
   cover_note: z.string().trim().max(500).optional().or(z.literal("")),
   honeypot: z.string().max(0).optional().or(z.literal("")),
@@ -88,27 +96,9 @@ function buildScreeningSchema(questions: ScreeningQuestion[]) {
 
 function ApplyPage() {
   const { slug } = Route.useParams();
-  const router = useRouter();
   const { data } = useSuspenseQuery(adQuery(slug));
   const ad = data.ad;
   const clientName = data.client_name;
-  const screeningQuestions = screeningQuestionsFor(slug);
-
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [companyNA, setCompanyNA] = useState(false);
-  const [companyVal, setCompanyVal] = useState("");
-  const [yoeVal, setYoeVal] = useState<string>("");
-  const [salaryVal, setSalaryVal] = useState<string>("");
-  const [answers, setAnswers] = useState<Record<string, unknown>>(() => {
-    const init: Record<string, unknown> = {};
-    for (const q of screeningQuestions) {
-      init[q.id] = q.type === "multiselect" ? [] : "";
-    }
-    return init;
-  });
 
   if (!ad) {
     return (
@@ -128,18 +118,39 @@ function ApplyPage() {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <h1 className="font-serif text-4xl">{ad.title}</h1>
-        {clientName && (
-          <p className="mt-1 text-sm text-muted-foreground">{clientName}</p>
-        )}
-        <p className="mt-6 text-muted-foreground">
-          This role is no longer accepting applications.
-        </p>
+        {clientName && <p className="mt-1 text-sm text-muted-foreground">{clientName}</p>}
+        <p className="mt-6 text-muted-foreground">This role is no longer accepting applications.</p>
         <Button asChild variant="outline" className="mt-6">
           <a href="/">See other open roles</a>
         </Button>
       </div>
     );
   }
+
+  return <ApplyForm ad={ad} clientName={clientName} />;
+}
+
+type PublicJobAd = NonNullable<Awaited<ReturnType<typeof getPublicJobAd>>["ad"]>;
+
+function ApplyForm({ ad, clientName }: { ad: PublicJobAd; clientName: string | null }) {
+  const router = useRouter();
+  const { data: screeningQuestions } = useSuspenseQuery(questionsQuery(ad.id));
+
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [companyNA, setCompanyNA] = useState(false);
+  const [companyVal, setCompanyVal] = useState("");
+  const [yoeVal, setYoeVal] = useState<string>("");
+  const [salaryVal, setSalaryVal] = useState<string>("");
+  const [answers, setAnswers] = useState<Record<string, unknown>>(() => {
+    const init: Record<string, unknown> = {};
+    for (const q of screeningQuestions) {
+      init[q.id] = q.type === "multiselect" ? [] : "";
+    }
+    return init;
+  });
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -174,8 +185,7 @@ function ApplyPage() {
     }
     if (!resumeFile) fieldErrors.resume = "Resume is required";
     else if (resumeFile.size > MAX_RESUME) fieldErrors.resume = "Max 10MB";
-    else if (!ALLOWED_MIME.includes(resumeFile.type))
-      fieldErrors.resume = "PDF or DOCX only";
+    else if (!ALLOWED_MIME.includes(resumeFile.type)) fieldErrors.resume = "PDF or DOCX only";
 
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
@@ -193,10 +203,7 @@ function ApplyPage() {
       const chunk = 0x8000;
       const view = new Uint8Array(buf);
       for (let i = 0; i < view.length; i += chunk) {
-        binary += String.fromCharCode.apply(
-          null,
-          Array.from(view.subarray(i, i + chunk)),
-        );
+        binary += String.fromCharCode.apply(null, Array.from(view.subarray(i, i + chunk)));
       }
       const data_base64 = btoa(binary);
 
@@ -247,8 +254,8 @@ function ApplyPage() {
         <h1 className="mt-4 font-serif text-4xl">Application received</h1>
         <p className="mt-3 text-muted-foreground">
           Thanks for applying to {ad.title}
-          {clientName ? ` at ${clientName}` : ""}. We&apos;ll review and be in
-          touch if there&apos;s a fit.
+          {clientName ? ` at ${clientName}` : ""}. We&apos;ll review and be in touch if there&apos;s
+          a fit.
         </p>
       </div>
     );
@@ -306,18 +313,12 @@ function ApplyPage() {
             maxLength={160}
           />
           <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Checkbox
-              checked={companyNA}
-              onCheckedChange={(v) => setCompanyNA(!!v)}
-            />
+            <Checkbox checked={companyNA} onCheckedChange={(v) => setCompanyNA(!!v)} />
             Not currently employed
           </label>
         </Field>
 
-        <Field
-          label="Years of experience *"
-          error={errors.years_of_experience}
-        >
+        <Field label="Years of experience *" error={errors.years_of_experience}>
           <Input
             type="number"
             min={0}
@@ -334,9 +335,7 @@ function ApplyPage() {
         >
           <Input
             value={formatSalary(salaryVal)}
-            onChange={(e) =>
-              setSalaryVal(e.target.value.replace(/\D/g, ""))
-            }
+            onChange={(e) => setSalaryVal(e.target.value.replace(/\D/g, ""))}
             maxLength={80}
             placeholder="e.g. 150,000"
           />
@@ -345,9 +344,7 @@ function ApplyPage() {
         <Field label="Resume (PDF or DOCX, max 10MB) *" error={errors.resume}>
           <label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-border px-4 py-3 hover:bg-muted/40">
             <Upload className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">
-              {resumeFile?.name ?? "Choose a file…"}
-            </span>
+            <span className="text-sm">{resumeFile?.name ?? "Choose a file…"}</span>
             <input
               type="file"
               accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -363,9 +360,7 @@ function ApplyPage() {
 
         {screeningQuestions.length > 0 && (
           <div className="space-y-6 border-t border-border pt-6">
-            <h2 className="font-serif text-2xl tracking-tight">
-              A few quick questions
-            </h2>
+            <h2 className="font-serif text-2xl tracking-tight">A few quick questions</h2>
             {screeningQuestions.map((q) => {
               const errKey = `screening.${q.id}`;
               if (q.type === "text") {
@@ -379,9 +374,7 @@ function ApplyPage() {
                       rows={3}
                       maxLength={q.max}
                       value={String(answers[q.id] ?? "")}
-                      onChange={(e) =>
-                        setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
-                      }
+                      onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
                     />
                   </Field>
                 );
@@ -395,16 +388,11 @@ function ApplyPage() {
                   >
                     <RadioGroup
                       value={String(answers[q.id] ?? "")}
-                      onValueChange={(v) =>
-                        setAnswers((a) => ({ ...a, [q.id]: v }))
-                      }
+                      onValueChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))}
                     >
                       {q.options.map((opt) => (
                         <div key={opt} className="flex items-center gap-2">
-                          <RadioGroupItem
-                            value={opt}
-                            id={`${q.id}-${opt}`}
-                          />
+                          <RadioGroupItem value={opt} id={`${q.id}-${opt}`} />
                           <Label htmlFor={`${q.id}-${opt}`}>{opt}</Label>
                         </div>
                       ))}
@@ -428,9 +416,7 @@ function ApplyPage() {
                             checked={checked}
                             onCheckedChange={(v) => {
                               setAnswers((a) => {
-                                const cur = ((a[q.id] as string[]) ?? []).filter(
-                                  (x) => x !== opt,
-                                );
+                                const cur = ((a[q.id] as string[]) ?? []).filter((x) => x !== opt);
                                 if (v) cur.push(opt);
                                 return { ...a, [q.id]: cur };
                               });

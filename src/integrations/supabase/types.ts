@@ -321,6 +321,53 @@ export type Database = {
         }
         Relationships: []
       }
+      screening_questions: {
+        Row: {
+          created_at: string
+          id: string
+          job_ad_id: string
+          key: string
+          label: string
+          max: number | null
+          options: Json
+          position: number
+          required: boolean
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_ad_id: string
+          key: string
+          label: string
+          max?: number | null
+          options?: Json
+          position: number
+          required?: boolean
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_ad_id?: string
+          key?: string
+          label?: string
+          max?: number | null
+          options?: Json
+          position?: number
+          required?: boolean
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "screening_questions_job_ad_id_fkey"
+            columns: ["job_ad_id"]
+            isOneToOne: false
+            referencedRelation: "job_ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_ad_stages: {
         Row: {
           created_at: string

@@ -51,6 +51,7 @@ import { Route as AuthenticatedJobsSlugStagesRouteImport } from './routes/_authe
 import { Route as AuthenticatedJobsSlugAddCandidateRouteImport } from './routes/_authenticated.jobs.$slug.add-candidate'
 import { Route as AuthenticatedClientJobsSlugRouteImport } from './routes/_authenticated/client.jobs.$slug'
 import { Route as AuthenticatedStaffJobsSlugStagesRouteImport } from './routes/_authenticated.staff.jobs.$slug.stages'
+import { Route as AuthenticatedStaffJobsSlugQuestionsRouteImport } from './routes/_authenticated.staff.jobs.$slug.questions'
 import { Route as AuthenticatedStaffJobsSlugAddCandidateRouteImport } from './routes/_authenticated.staff.jobs.$slug.add-candidate'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -285,6 +286,12 @@ const AuthenticatedStaffJobsSlugStagesRoute =
     path: '/stages',
     getParentRoute: () => AuthenticatedStaffJobsSlugRoute,
   } as any)
+const AuthenticatedStaffJobsSlugQuestionsRoute =
+  AuthenticatedStaffJobsSlugQuestionsRouteImport.update({
+    id: '/questions',
+    path: '/questions',
+    getParentRoute: () => AuthenticatedStaffJobsSlugRoute,
+  } as any)
 const AuthenticatedStaffJobsSlugAddCandidateRoute =
   AuthenticatedStaffJobsSlugAddCandidateRouteImport.update({
     id: '/add-candidate',
@@ -334,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/staff/jobs/': typeof AuthenticatedStaffJobsIndexRoute
   '/staff/jobs/$slug/add-candidate': typeof AuthenticatedStaffJobsSlugAddCandidateRoute
+  '/staff/jobs/$slug/questions': typeof AuthenticatedStaffJobsSlugQuestionsRoute
   '/staff/jobs/$slug/stages': typeof AuthenticatedStaffJobsSlugStagesRoute
 }
 export interface FileRoutesByTo {
@@ -372,6 +380,7 @@ export interface FileRoutesByTo {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/staff/jobs': typeof AuthenticatedStaffJobsIndexRoute
   '/staff/jobs/$slug/add-candidate': typeof AuthenticatedStaffJobsSlugAddCandidateRoute
+  '/staff/jobs/$slug/questions': typeof AuthenticatedStaffJobsSlugQuestionsRoute
   '/staff/jobs/$slug/stages': typeof AuthenticatedStaffJobsSlugStagesRoute
 }
 export interface FileRoutesById {
@@ -418,6 +427,7 @@ export interface FileRoutesById {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/_authenticated/staff/jobs/': typeof AuthenticatedStaffJobsIndexRoute
   '/_authenticated/staff/jobs/$slug/add-candidate': typeof AuthenticatedStaffJobsSlugAddCandidateRoute
+  '/_authenticated/staff/jobs/$slug/questions': typeof AuthenticatedStaffJobsSlugQuestionsRoute
   '/_authenticated/staff/jobs/$slug/stages': typeof AuthenticatedStaffJobsSlugStagesRoute
 }
 export interface FileRouteTypes {
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/staff/jobs/'
     | '/staff/jobs/$slug/add-candidate'
+    | '/staff/jobs/$slug/questions'
     | '/staff/jobs/$slug/stages'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -502,6 +513,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/staff/jobs'
     | '/staff/jobs/$slug/add-candidate'
+    | '/staff/jobs/$slug/questions'
     | '/staff/jobs/$slug/stages'
   id:
     | '__root__'
@@ -547,6 +559,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/_authenticated/staff/jobs/'
     | '/_authenticated/staff/jobs/$slug/add-candidate'
+    | '/_authenticated/staff/jobs/$slug/questions'
     | '/_authenticated/staff/jobs/$slug/stages'
   fileRoutesById: FileRoutesById
 }
@@ -858,6 +871,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffJobsSlugStagesRouteImport
       parentRoute: typeof AuthenticatedStaffJobsSlugRoute
     }
+    '/_authenticated/staff/jobs/$slug/questions': {
+      id: '/_authenticated/staff/jobs/$slug/questions'
+      path: '/questions'
+      fullPath: '/staff/jobs/$slug/questions'
+      preLoaderRoute: typeof AuthenticatedStaffJobsSlugQuestionsRouteImport
+      parentRoute: typeof AuthenticatedStaffJobsSlugRoute
+    }
     '/_authenticated/staff/jobs/$slug/add-candidate': {
       id: '/_authenticated/staff/jobs/$slug/add-candidate'
       path: '/add-candidate'
@@ -958,6 +978,7 @@ const AuthenticatedPortalRouteWithChildren =
 
 interface AuthenticatedStaffJobsSlugRouteChildren {
   AuthenticatedStaffJobsSlugAddCandidateRoute: typeof AuthenticatedStaffJobsSlugAddCandidateRoute
+  AuthenticatedStaffJobsSlugQuestionsRoute: typeof AuthenticatedStaffJobsSlugQuestionsRoute
   AuthenticatedStaffJobsSlugStagesRoute: typeof AuthenticatedStaffJobsSlugStagesRoute
 }
 
@@ -965,6 +986,8 @@ const AuthenticatedStaffJobsSlugRouteChildren: AuthenticatedStaffJobsSlugRouteCh
   {
     AuthenticatedStaffJobsSlugAddCandidateRoute:
       AuthenticatedStaffJobsSlugAddCandidateRoute,
+    AuthenticatedStaffJobsSlugQuestionsRoute:
+      AuthenticatedStaffJobsSlugQuestionsRoute,
     AuthenticatedStaffJobsSlugStagesRoute:
       AuthenticatedStaffJobsSlugStagesRoute,
   }
@@ -1056,3 +1079,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

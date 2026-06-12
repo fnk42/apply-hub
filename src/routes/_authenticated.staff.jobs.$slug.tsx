@@ -1,9 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import {
-  queryOptions,
-  useSuspenseQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -67,6 +63,7 @@ import {
   ExternalLink,
   FileText,
   Linkedin,
+  ListChecks,
   Lock,
   Pencil,
   Plus,
@@ -108,7 +105,6 @@ const rolesQuery = queryOptions({
   staleTime: 60_000,
 });
 
-
 export const Route = createFileRoute("/_authenticated/staff/jobs/$slug")({
   loader: async ({ context, params }) => {
     const { ad } = await context.queryClient.ensureQueryData(adQuery(params.slug));
@@ -129,7 +125,6 @@ export const Route = createFileRoute("/_authenticated/staff/jobs/$slug")({
     </div>
   ),
 });
-
 
 function JobAdDetailPage() {
   const { slug } = Route.useParams();
@@ -164,7 +159,7 @@ function JobAdDetailPage() {
   const shortlistCount = all.filter((c) => c.shortlisted).length;
 
   // Resolve a candidate's stage_id, falling back to legacy_status mapping if missing
-  const resolveStageId = (c: typeof all[number]): string | null => {
+  const resolveStageId = (c: (typeof all)[number]): string | null => {
     if (c.stage_id) return c.stage_id;
     const match = stages.find((s) => s.legacy_status === c.pipeline_status);
     return match?.id ?? null;
@@ -177,27 +172,21 @@ function JobAdDetailPage() {
     if (stageFilter !== "all" && resolveStageId(c) !== stageFilter) return false;
     if (search) {
       const s = search.toLowerCase();
-      if (
-        !c.full_name.toLowerCase().includes(s) &&
-        !c.email.toLowerCase().includes(s)
-      )
+      if (!c.full_name.toLowerCase().includes(s) && !c.email.toLowerCase().includes(s))
         return false;
     }
     return true;
   });
 
   const daysLive = ad.authorized_at
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.now() - new Date(ad.authorized_at).getTime()) / 86400000,
-        ),
-      )
+    ? Math.max(0, Math.floor((Date.now() - new Date(ad.authorized_at).getTime()) / 86400000))
     : null;
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [tab, stageFilter, search]);
+  useEffect(() => {
+    setPage(1);
+  }, [tab, stageFilter, search]);
 
   const totalRows = rows.length;
   const pageCount = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
@@ -246,8 +235,6 @@ function JobAdDetailPage() {
     await commitFit(id, "unrated", currentFit as FitVal);
   }
 
-
-
   async function toggleShortlist(id: string, current: boolean) {
     try {
       await updateCandidate({ data: { id, patch: { shortlisted: !current } } });
@@ -267,7 +254,6 @@ function JobAdDetailPage() {
       toast.error(e?.message || "Failed");
     }
   }
-
 
   async function doSetStatus(next: "closed" | "live") {
     setStatusBusy(true);
@@ -304,16 +290,22 @@ function JobAdDetailPage() {
               >
                 {ad.status.replace("_", " ")}
               </span>
-              {client && (
-                <span className="text-sm text-muted-foreground">· {client.name}</span>
-              )}
+              {client && <span className="text-sm text-muted-foreground">· {client.name}</span>}
             </div>
             <h1 className="mt-2 font-serif text-4xl tracking-tight">{ad.title}</h1>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span>{ad.roles_count} role{ad.roles_count === 1 ? "" : "s"}</span>
+              <span>
+                {ad.roles_count} role{ad.roles_count === 1 ? "" : "s"}
+              </span>
               {ad.start_date && <span>Start: {format(new Date(ad.start_date), "d MMM yyyy")}</span>}
-              {daysLive !== null && <span>{daysLive} day{daysLive === 1 ? "" : "s"} live</span>}
-              <span>{stats.app_count} application{stats.app_count === 1 ? "" : "s"}</span>
+              {daysLive !== null && (
+                <span>
+                  {daysLive} day{daysLive === 1 ? "" : "s"} live
+                </span>
+              )}
+              <span>
+                {stats.app_count} application{stats.app_count === 1 ? "" : "s"}
+              </span>
               <span>{stats.shortlist_count} shortlisted</span>
             </div>
           </div>
@@ -335,6 +327,13 @@ function JobAdDetailPage() {
             {isAdmin && (
               <Button variant="outline" onClick={() => setEditOpen(true)}>
                 <Pencil className="mr-1 h-4 w-4" /> Edit ad
+              </Button>
+            )}
+            {isAdmin && (
+              <Button asChild variant="outline">
+                <Link to="/staff/jobs/$slug/questions" params={{ slug }}>
+                  <ListChecks className="mr-1 h-4 w-4" /> Questions
+                </Link>
               </Button>
             )}
             {isInternal && (
@@ -363,8 +362,8 @@ function JobAdDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Close this ad?</AlertDialogTitle>
             <AlertDialogDescription>
-              Existing candidates remain visible, but no new applications will be accepted on
-              the public apply link.
+              Existing candidates remain visible, but no new applications will be accepted on the
+              public apply link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -388,8 +387,7 @@ function JobAdDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reopen this ad?</AlertDialogTitle>
             <AlertDialogDescription>
-              The ad will go live again and start accepting applications on the public apply
-              link.
+              The ad will go live again and start accepting applications on the public apply link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -407,35 +405,25 @@ function JobAdDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-
-
       {/* Candidates */}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-6">
         <TabsList>
           <TabsTrigger value="all">
             All candidates{" "}
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-              {allCount}
-            </span>
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">{allCount}</span>
           </TabsTrigger>
           <TabsTrigger value="strong">
             Strong fit{" "}
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-              {strongCount}
-            </span>
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">{strongCount}</span>
           </TabsTrigger>
           <TabsTrigger value="medium">
             Medium fit{" "}
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-              {mediumCount}
-            </span>
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">{mediumCount}</span>
           </TabsTrigger>
           <TabsTrigger value="shortlist">
             Shortlist{" "}
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-              {shortlistCount}
-            </span>
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">{shortlistCount}</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -485,9 +473,7 @@ function JobAdDetailPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Date sourced</TableHead>
                 <TableHead className="w-[80px] text-right">YOE</TableHead>
-                {showSalary && (
-                  <TableHead className="w-[120px] text-right">Salary</TableHead>
-                )}
+                {showSalary && <TableHead className="w-[120px] text-right">Salary</TableHead>}
                 <TableHead className="w-[200px]">Stage</TableHead>
                 <TableHead>Fit</TableHead>
                 <TableHead className="w-[90px]">Resume</TableHead>
@@ -500,7 +486,9 @@ function JobAdDetailPage() {
                 <TableRow
                   key={c.id}
                   className="cursor-pointer"
-                  onClick={() => navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })}
+                  onClick={() =>
+                    navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })
+                  }
                 >
                   <TableCell>
                     <div className="flex flex-col">
@@ -509,9 +497,7 @@ function JobAdDetailPage() {
                         {c.current_company || "Independent"}
                       </span>
                       {c.current_title && (
-                        <span className="text-xs text-muted-foreground/80">
-                          {c.current_title}
-                        </span>
+                        <span className="text-xs text-muted-foreground/80">{c.current_title}</span>
                       )}
                     </div>
                   </TableCell>
@@ -531,12 +517,14 @@ function JobAdDetailPage() {
                       const sid = resolveStageId(c);
                       const cur = sid ? stageById.get(sid) : null;
                       return (
-                        <Select
-                          value={sid ?? ""}
-                          onValueChange={(v) => changeStage(c.id, v)}
-                        >
+                        <Select value={sid ?? ""} onValueChange={(v) => changeStage(c.id, v)}>
                           <SelectTrigger className="h-8 w-full border-none bg-transparent p-0 shadow-none focus:ring-0">
-                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", stageBadgeClass(cur?.legacy_status))}>
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                stageBadgeClass(cur?.legacy_status),
+                              )}
+                            >
                               {cur?.label ?? "—"}
                             </span>
                           </SelectTrigger>
@@ -564,10 +552,7 @@ function JobAdDetailPage() {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <ResumeLink path={(c as any).resume_url ?? null} />
                   </TableCell>
-                  <TableCell
-                    className="text-center"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => toggleShortlist(c.id, !!c.shortlisted)}
                       aria-label={c.shortlisted ? "Remove from shortlist" : "Add to shortlist"}
@@ -596,7 +581,13 @@ function JobAdDetailPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => navigate({ to: "/staff/$id", params: { id: c.id }, search: { from: ad.id } })}
+                          onClick={() =>
+                            navigate({
+                              to: "/staff/$id",
+                              params: { id: c.id },
+                              search: { from: ad.id },
+                            })
+                          }
                         >
                           Open candidate
                         </DropdownMenuItem>
@@ -630,7 +621,8 @@ function JobAdDetailPage() {
         {totalRows > PAGE_SIZE && (
           <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
             <span className="text-muted-foreground">
-              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalRows)} of {totalRows}
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalRows)}{" "}
+              of {totalRows}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -696,9 +688,11 @@ function EditJobAdDialog({
   const [rolesCount, setRolesCount] = useState(ad.roles_count);
   const [startDate, setStartDate] = useState(ad.start_date ?? "");
   const [isBillable, setIsBillable] = useState(ad.is_billable);
-  const [postingFee, setPostingFee] = useState<string>(ad.posting_fee != null ? String(ad.posting_fee) : "");
+  const [postingFee, setPostingFee] = useState<string>(
+    ad.posting_fee != null ? String(ad.posting_fee) : "",
+  );
   const [status, setStatus] = useState<"live" | "pending_authorization" | "closed">(
-    (ad.status === "live" || ad.status === "closed" || ad.status === "pending_authorization")
+    ad.status === "live" || ad.status === "closed" || ad.status === "pending_authorization"
       ? ad.status
       : "pending_authorization",
   );
@@ -706,7 +700,10 @@ function EditJobAdDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) { toast.error("Title is required"); return; }
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
     setBusy(true);
     try {
       await updateJobAd({
@@ -732,40 +729,76 @@ function EditJobAdDialog({
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>Edit job ad</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Edit job ad</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-ad-title">Title</Label>
-            <Input id="edit-ad-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <Input
+              id="edit-ad-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="edit-ad-roles">Roles</Label>
-              <Input id="edit-ad-roles" type="number" min={1} value={rolesCount}
-                onChange={(e) => setRolesCount(Math.max(1, parseInt(e.target.value || "1", 10)))} />
+              <Input
+                id="edit-ad-roles"
+                type="number"
+                min={1}
+                value={rolesCount}
+                onChange={(e) => setRolesCount(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-ad-start">Start date</Label>
-              <Input id="edit-ad-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Input
+                id="edit-ad-start"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-ad-jdurl">JD URL</Label>
-            <Input id="edit-ad-jdurl" type="url" value={jdUrl} onChange={(e) => setJdUrl(e.target.value)} placeholder="https://…" />
+            <Input
+              id="edit-ad-jdurl"
+              type="url"
+              value={jdUrl}
+              onChange={(e) => setJdUrl(e.target.value)}
+              placeholder="https://…"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-ad-li">LinkedIn job URL</Label>
-            <Input id="edit-ad-li" type="url" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} placeholder="https://www.linkedin.com/jobs/…" />
+            <Input
+              id="edit-ad-li"
+              type="url"
+              value={linkedinUrl}
+              onChange={(e) => setLinkedinUrl(e.target.value)}
+              placeholder="https://www.linkedin.com/jobs/…"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-ad-jd">JD text</Label>
-            <Textarea id="edit-ad-jd" rows={8} value={jdText} onChange={(e) => setJdText(e.target.value)} />
+            <Textarea
+              id="edit-ad-jd"
+              rows={8}
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
+            />
           </div>
           <div className="flex items-center gap-3">
             <input
@@ -780,8 +813,14 @@ function EditJobAdDialog({
           {isBillable && (
             <div className="space-y-2">
               <Label htmlFor="edit-ad-fee">Posting fee (KES)</Label>
-              <Input id="edit-ad-fee" type="number" min={0} value={postingFee}
-                onChange={(e) => setPostingFee(e.target.value)} placeholder="35000" />
+              <Input
+                id="edit-ad-fee"
+                type="number"
+                min={0}
+                value={postingFee}
+                onChange={(e) => setPostingFee(e.target.value)}
+                placeholder="35000"
+              />
             </div>
           )}
           <div className="space-y-2">
@@ -798,8 +837,12 @@ function EditJobAdDialog({
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Saving…" : "Save changes"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -807,13 +850,7 @@ function EditJobAdDialog({
   );
 }
 
-function NameCell({
-  name,
-  linkedinUrl,
-}: {
-  name: string;
-  linkedinUrl: string | null;
-}) {
+function NameCell({ name, linkedinUrl }: { name: string; linkedinUrl: string | null }) {
   const isUrl = linkedinUrl && /^https?:\/\//i.test(linkedinUrl);
   if (isUrl) {
     return (
@@ -847,9 +884,7 @@ function openExternal(url: string) {
 
 function ShareLinkCard({ slug }: { slug: string }) {
   const url =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/apply/${slug}`
-      : `/apply/${slug}`;
+    typeof window !== "undefined" ? `${window.location.origin}/apply/${slug}` : `/apply/${slug}`;
 
   async function copy() {
     try {
@@ -968,17 +1003,12 @@ function JdPanel({
       {isAdmin && (
         <div className="flex flex-wrap items-center gap-4 border-t border-border bg-muted/30 px-6 py-2 text-xs text-muted-foreground">
           <span>
-            Billable:{" "}
-            <span className="font-medium text-foreground">
-              {billable ? "Yes" : "No"}
-            </span>
+            Billable: <span className="font-medium text-foreground">{billable ? "Yes" : "No"}</span>
           </span>
           <span>
             Posting fee:{" "}
             <span className="font-medium text-foreground">
-              {typeof fee === "number" && fee > 0
-                ? `KES ${fee.toLocaleString("en-KE")}`
-                : "—"}
+              {typeof fee === "number" && fee > 0 ? `KES ${fee.toLocaleString("en-KE")}` : "—"}
             </span>
           </span>
           <span>
@@ -1023,6 +1053,3 @@ function ResumeLink({ path }: { path: string | null }) {
     </button>
   );
 }
-
-
-
