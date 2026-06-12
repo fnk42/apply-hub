@@ -30,7 +30,7 @@ import {
   FIT_LABELS,
   stageBadgeClass,
 } from "@/components/portal/Badges";
-import { screeningQuestions } from "@/config/screening";
+import { getQuestionsForJobAd } from "@/lib/screening.functions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, Star, Trash2 } from "lucide-react";
@@ -47,14 +47,31 @@ const siblingsQuery = (jobAdId: string) =>
     queryFn: () => listCandidates({ data: { job_ad_id: jobAdId } }),
   });
 
+// Screening question labels for this candidate's job ad. Resolve from the
+// screening_questions table (keyed by the stable `key`, exposed as q.id) — the
+// old in-code screeningBySlug map has no entries for DB-only ads, which left the
+// section blank. Answers are still read by key from a.screening_answers.
+const screeningQuestionsQuery = (jobAdId: string) =>
+  queryOptions({
+    queryKey: ["screening-questions", jobAdId],
+    queryFn: () => getQuestionsForJobAd({ data: { job_ad_id: jobAdId } }),
+  });
+
 const detailSearchSchema = z.object({
   from: fallback(z.string().optional(), undefined),
 });
 
 export const Route = createFileRoute("/_authenticated/staff/$id")({
   validateSearch: zodValidator(detailSearchSchema),
-  loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData(candidateQuery(params.id)),
+  loader: async ({ context, params }) => {
+    const data = await context.queryClient.ensureQueryData(
+      candidateQuery(params.id),
+    );
+    await context.queryClient.ensureQueryData(
+      screeningQuestionsQuery(data.application.job_ad_id),
+    );
+    return data;
+  },
   component: CandidateDetailPage,
 });
 
@@ -177,6 +194,9 @@ function CandidateDetailPage() {
     }
   }
 
+  const { data: screeningQuestions } = useSuspenseQuery(
+    screeningQuestionsQuery(a.job_ad_id),
+  );
   const screening = (a.screening_answers as Record<string, any>) || {};
   const hasLinkedIn = a.linkedin_url && /^https?:\/\//i.test(a.linkedin_url);
 
