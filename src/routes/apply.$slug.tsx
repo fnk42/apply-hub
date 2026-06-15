@@ -140,6 +140,8 @@ function ApplyForm({ ad, clientName }: { ad: PublicJobAd; clientName: string | n
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeBytes, setResumeBytes] = useState<Uint8Array | null>(null);
+  const [readingResume, setReadingResume] = useState(false);
   const [companyNA, setCompanyNA] = useState(false);
   const [companyVal, setCompanyVal] = useState("");
   const [yoeVal, setYoeVal] = useState<string>("");
@@ -184,6 +186,7 @@ function ApplyForm({ ad, clientName }: { ad: PublicJobAd; clientName: string | n
       }
     }
     if (!resumeFile) fieldErrors.resume = "Resume is required";
+    else if (!resumeBytes) fieldErrors.resume = "Resume is still loading — try again in a moment";
     else if (resumeFile.size > MAX_RESUME) fieldErrors.resume = "Max 10MB";
     else if (!ALLOWED_MIME.includes(resumeFile.type)) fieldErrors.resume = "PDF or DOCX only";
 
@@ -196,12 +199,12 @@ function ApplyForm({ ad, clientName }: { ad: PublicJobAd; clientName: string | n
 
     setSubmitting(true);
     try {
-      // Upload via our own origin to avoid ad blockers / DNS filters that
-      // block *.supabase.co for applicants.
-      const buf = await resumeFile!.arrayBuffer();
+      // Resume bytes were read into memory at pick-time, so the OS file
+      // handle no longer needs to be valid. Avoids NotReadableError when
+      // the user moves/renames the file or the tab is backgrounded.
       let binary = "";
       const chunk = 0x8000;
-      const view = new Uint8Array(buf);
+      const view = resumeBytes!;
       for (let i = 0; i < view.length; i += chunk) {
         binary += String.fromCharCode.apply(null, Array.from(view.subarray(i, i + chunk)));
       }
@@ -344,12 +347,39 @@ function ApplyForm({ ad, clientName }: { ad: PublicJobAd; clientName: string | n
         <Field label="Resume (PDF or DOCX, max 10MB) *" error={errors.resume}>
           <label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-border px-4 py-3 hover:bg-muted/40">
             <Upload className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">{resumeFile?.name ?? "Choose a file…"}</span>
+            <span className="text-sm">
+              {readingResume
+                ? "Reading file…"
+                : (resumeFile?.name ?? "Choose a file…")}
+            </span>
             <input
               type="file"
               accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
-              onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+              onChange={async (e) => {
+                const f = e.target.files?.[0] ?? null;
+                setResumeFile(f);
+                setResumeBytes(null);
+                if (!f) return;
+                setReadingResume(true);
+                try {
+                  const buf = await f.arrayBuffer();
+                  setResumeBytes(new Uint8Array(buf));
+                  setErrors((er) => {
+                    const { resume: _r, ...rest } = er;
+                    return rest;
+                  });
+                } catch {
+                  setErrors((er) => ({
+                    ...er,
+                    resume:
+                      "Could not read this file. It may have moved or been renamed — please pick it again.",
+                  }));
+                  setResumeFile(null);
+                } finally {
+                  setReadingResume(false);
+                }
+              }}
             />
           </label>
         </Field>
@@ -433,8 +463,8 @@ function ApplyForm({ ad, clientName }: { ad: PublicJobAd; clientName: string | n
           </div>
         )}
 
-        <Button type="submit" disabled={submitting} className="w-full">
-          {submitting ? "Submitting…" : "Submit application"}
+        <Button type="submit" disabled={submitting || readingResume} className="w-full">
+          {submitting ? "Submitting…" : readingResume ? "Reading file…" : "Submit application"}
         </Button>
       </form>
     </div>
