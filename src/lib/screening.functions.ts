@@ -91,13 +91,14 @@ export const listScreeningQuestions = createServerFn({ method: "POST" })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertWriter(supabase: any, userId: string) {
-  const { data: roleRows } = await supabase
+  const { data: roleRows, error } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .in("role", ["admin", "recruiter"]);
+    .in("role", ["admin", "member"]);
+  if (error) throw new Error(error.message);
   if (!(roleRows ?? []).length) {
-    throw new Error("Only admins and recruiters can manage screening questions.");
+    throw new Error("Only admins and members can manage screening questions.");
   }
 }
 
